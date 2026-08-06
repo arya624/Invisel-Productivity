@@ -8,18 +8,18 @@
 // ---------------------------------------------------------------
 
 async function apiCall(action, payload) {
-  try {
-    return await apiCallOnce(action, payload);
-  } catch (err) {
-    // Apps Script occasionally returns an HTML interstitial on the very first
-    // request after a redeploy or idle period. Retry once, silently, before
-    // surfacing anything to the person — most of the time this just works.
-    if (err.transient) {
-      await new Promise(r => setTimeout(r, 900));
+  const delays = [900, 1800]; // two retries, with increasing backoff
+  let lastErr;
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
       return await apiCallOnce(action, payload);
+    } catch (err) {
+      lastErr = err;
+      if (!err.transient || attempt === delays.length) throw err;
+      await new Promise(r => setTimeout(r, delays[attempt]));
     }
-    throw err;
   }
+  throw lastErr;
 }
 
 async function apiCallOnce(action, payload) {
@@ -28,7 +28,7 @@ async function apiCallOnce(action, payload) {
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
   let res;
   try {
@@ -40,10 +40,15 @@ async function apiCallOnce(action, payload) {
       signal: controller.signal
     });
   } catch (err) {
+    clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      throw new Error('Request timed out after 20s. The Apps Script backend may be slow, misconfigured, or unreachable — check the deployment is set to "Anyone" and try again.');
+      const timeoutErr = new Error('Request timed out. Retrying…');
+      timeoutErr.transient = true;
+      throw timeoutErr;
     }
-    throw new Error('Could not reach the backend. Check your internet connection and that config.js has the correct URL.');
+    const networkErr = new Error('Could not reach the backend. Check your internet connection and that config.js has the correct URL.');
+    networkErr.transient = true;
+    throw networkErr;
   } finally {
     clearTimeout(timeoutId);
   }
