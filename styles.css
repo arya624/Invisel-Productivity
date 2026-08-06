@@ -318,6 +318,7 @@ button { font-family: inherit; cursor: pointer; }
   border-radius: var(--radius-sm);
   font-size: 13.5px;
   font-weight: 500;
+  transition: background-color .12s ease, color .12s ease;
 }
 
 .sidebar-nav button:hover { background: rgba(255,255,255,0.05); color: #fff; }
@@ -457,12 +458,15 @@ button { font-family: inherit; cursor: pointer; }
   grid-template-columns: 1fr auto auto auto auto;
   align-items: center;
   gap: 14px;
-  padding: 13px 4px;
+  padding: 13px 16px;
+  margin: 0 -16px;
+  border-radius: 8px;
   border-bottom: 1px solid var(--border-soft);
   cursor: pointer;
+  transition: background-color .12s ease;
 }
 .task-row:last-child { border-bottom: none; }
-.task-row:hover { background: var(--surface-hover); margin: 0 -20px; padding: 13px 24px; border-radius: 8px; }
+.task-row:hover { background: var(--surface-hover); }
 
 .task-main .title { font-weight: 700; font-size: 14px; color: var(--text); }
 .task-main .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
@@ -553,7 +557,7 @@ button { font-family: inherit; cursor: pointer; }
   border: 1px solid var(--border-soft);
   padding: 6px 6px;
   cursor: pointer;
-  transition: background .12s;
+  transition: background-color .12s ease;
 }
 .cal-cell:hover { background: var(--surface-hover); }
 .cal-cell.cal-empty { border: none; cursor: default; background: none; }
@@ -580,12 +584,15 @@ button { font-family: inherit; cursor: pointer; }
 .modal-backdrop {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.6);
-  display: none;
+  display: flex;
   align-items: center; justify-content: center;
   padding: 20px;
   z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .16s ease;
 }
-.modal-backdrop.show { display: flex; }
+.modal-backdrop.show { opacity: 1; pointer-events: auto; }
 
 .modal {
   background: var(--surface);
@@ -596,7 +603,10 @@ button { font-family: inherit; cursor: pointer; }
   max-height: 88vh;
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
+  transform: scale(.97) translateY(6px);
+  transition: transform .16s ease;
 }
+.modal-backdrop.show .modal { transform: scale(1) translateY(0); }
 
 .modal-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -677,6 +687,16 @@ button { font-family: inherit; cursor: pointer; }
 }
 .log-summary .big { font-size: 24px; font-weight: 700; color: var(--green); }
 .log-summary .txt { color: var(--muted); font-size: 13px; }
+
+/* -------------------------------------------------------------
+   VIEW TRANSITIONS
+------------------------------------------------------------- */
+
+@keyframes view-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.view-fade-in { animation: view-fade-in .18s ease; }
 
 /* -------------------------------------------------------------
    RESPONSIVE

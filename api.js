@@ -8,6 +8,21 @@
 // ---------------------------------------------------------------
 
 async function apiCall(action, payload) {
+  try {
+    return await apiCallOnce(action, payload);
+  } catch (err) {
+    // Apps Script occasionally returns an HTML interstitial on the very first
+    // request after a redeploy or idle period. Retry once, silently, before
+    // surfacing anything to the person — most of the time this just works.
+    if (err.transient) {
+      await new Promise(r => setTimeout(r, 900));
+      return await apiCallOnce(action, payload);
+    }
+    throw err;
+  }
+}
+
+async function apiCallOnce(action, payload) {
   if (!APP_CONFIG.APPS_SCRIPT_URL || APP_CONFIG.APPS_SCRIPT_URL === 'PASTE_YOUR_WEB_APP_URL_HERE') {
     throw new Error('Backend not configured yet. Paste your Apps Script Web App URL into config.js.');
   }
@@ -37,7 +52,9 @@ async function apiCall(action, payload) {
   try {
     data = await res.json();
   } catch (err) {
-    throw new Error('Backend returned an unexpected (non-JSON) response. This usually means the Apps Script deployment access isn\'t set to "Anyone" — check Deploy → Manage deployments.');
+    const parseErr = new Error('Backend returned an unexpected (non-JSON) response. This usually means the Apps Script deployment access isn\'t set to "Anyone" — check Deploy → Manage deployments.');
+    parseErr.transient = true;
+    throw parseErr;
   }
 
   if (data.success === false) throw new Error(data.error || 'Request failed.');
@@ -88,21 +105,38 @@ function initGatedLogin(expectedRole, onAuthed) {
   }
 
   async function loadNames() {
+    const cacheKey = 'invisel_names_' + expectedRole;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      // Show instantly from cache, then quietly refresh underneath.
+      renderNameOptions(JSON.parse(cached));
+    }
     try {
       const data = await apiCall('getPeopleNames', { role: expectedRole });
-      if (!data.people.length) {
-        nameSelect.innerHTML = `<option value="">No one added yet — ask Admin</option>`;
-        return;
-      }
-      nameSelect.innerHTML = '<option value="">Select your name…</option>' +
-        data.people
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`)
-          .join('');
+      localStorage.setItem(cacheKey, JSON.stringify(data.people));
+      renderNameOptions(data.people);
     } catch (err) {
-      nameSelect.innerHTML = '<option value="">Could not load — check config.js</option>';
-      showError(err.message);
+      if (!cached) {
+        nameSelect.innerHTML = '<option value="">Could not load — check config.js</option>';
+        showError(err.message);
+      }
+      // If we had cached names, fail silently — the person can still sign in
+      // with what's already showing, and we'll retry fresh next visit.
     }
+  }
+
+  function renderNameOptions(people) {
+    if (!people.length) {
+      nameSelect.innerHTML = `<option value="">No one added yet — ask Admin</option>`;
+      return;
+    }
+    const prevValue = nameSelect.value;
+    nameSelect.innerHTML = '<option value="">Select your name…</option>' +
+      people
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(p => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`)
+        .join('');
+    if (prevValue) nameSelect.value = prevValue;
   }
 
   async function doLogin() {
@@ -188,6 +222,13 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str == null ? '' : String(str);
   return div.innerHTML;
+}
+
+/** Restarts the fade-in animation on an element — used when switching sidebar views. */
+function fadeInView(el) {
+  el.classList.remove('view-fade-in');
+  void el.offsetWidth; // force reflow so the animation restarts
+  el.classList.add('view-fade-in');
 }
 
 // ---------------------------------------------------------------

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Employee — Invisel Task Tracker</title>
+<link rel="preconnect" href="https://script.google.com">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -204,6 +205,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     document.getElementById('pageSub').textContent = subs[view];
     if (view === 'calendar') drawCalendar();
     if (view === 'log') drawLog();
+    fadeInView(document.getElementById('view-' + view));
   });
 });
 
