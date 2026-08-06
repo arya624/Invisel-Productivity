@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invisel Task Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .hub-shell {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+    background: radial-gradient(1200px 600px at 15% -10%, rgba(14,124,123,0.12), transparent 60%),
+                radial-gradient(900px 500px at 110% 10%, rgba(125,140,255,0.10), transparent 60%), var(--canvas);
+  }
+  .hub-card { width: 100%; max-width: 460px; }
+  .hub-links { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+  .hub-link {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius);
+    padding: 16px 18px; text-decoration: none; color: var(--text); box-shadow: var(--shadow);
+  }
+  .hub-link:hover { border-color: var(--teal); }
+  .hub-link .t { font-weight: 600; font-size: 14.5px; }
+  .hub-link .s { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .hub-link .arrow { color: var(--muted); font-size: 18px; }
+</style>
+</head>
+<body>
+<div class="hub-shell">
+  <div class="hub-card">
+    <div class="login-mark">
+      <span class="dot"></span>
+      <span class="word">Invisel<small>Task Tracker</small></span>
+    </div>
+    <h1 style="font-size:21px; margin-top:18px;">Pick your link</h1>
+    <p class="login-sub" style="margin-bottom:0;">Each dashboard has its own sign-in — bookmark the one that's yours.</p>
+    <div class="hub-links">
+      <a class="hub-link" href="employee.html">
+        <div><div class="t">Employee</div><div class="s">View your tasks, mark progress, calendar</div></div>
+        <span class="arrow">→</span>
+      </a>
+      <a class="hub-link" href="manager.html">
+        <div><div class="t">Manager</div><div class="s">Create and edit tasks, team calendar, upcoming</div></div>
+        <span class="arrow">→</span>
+      </a>
+      <a class="hub-link" href="admin.html">
+        <div><div class="t">Admin</div><div class="s">Everything org-wide, plus manage people</div></div>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

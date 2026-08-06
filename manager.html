@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manager — Invisel Task Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- LOGIN SCREEN (this link only ever signs in Managers) -->
+<div class="login-shell" id="loginScreen">
+  <div class="login-card">
+    <div class="login-mark">
+      <span class="dot"></span>
+      <span class="word">Invisel<small>Manager Sign-in</small></span>
+    </div>
+    <h1>Sign in</h1>
+    <p class="login-sub">Select your name and enter your 4-digit PIN.</p>
+    <div class="login-error" id="loginError"></div>
+    <div class="field">
+      <label for="nameSelect">Name</label>
+      <select id="nameSelect"><option value="">Loading names…</option></select>
+    </div>
+    <div class="field">
+      <label for="pinInput">PIN</label>
+      <input type="password" id="pinInput" inputmode="numeric" maxlength="4" placeholder="••••">
+    </div>
+    <button class="btn btn-primary" id="loginBtn">Sign in</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app-shell" id="appShell" style="display:none;">
+  <aside class="sidebar">
+    <div class="sidebar-mark">
+      <span class="dot"></span>
+      <span class="word">Invisel<small>Task Tracker</small></span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" data-view="upcoming"><span class="ic">◷</span> Upcoming</button>
+      <button class="nav-btn" data-view="tasks"><span class="ic">☰</span> Team Tasks</button>
+      <button class="nav-btn" data-view="calendar"><span class="ic">▦</span> Calendar</button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="avatar" id="avatarInitial">?</div>
+        <div class="who">
+          <div class="name" id="userName">—</div>
+          <div class="role">Manager</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="pageTitle">Upcoming</h1>
+        <div class="sub" id="pageSub">What's due soon and what's overdue, across your team.</div>
+      </div>
+      <button class="btn btn-teal" id="newTaskBtn">+ New task</button>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card accent-rust"><div class="num" id="statOverdue">0</div><div class="label">Overdue</div></div>
+      <div class="stat-card accent-amber"><div class="num" id="statSoon">0</div><div class="label">Due in 3 days</div></div>
+      <div class="stat-card accent-teal"><div class="num" id="statProgress">0</div><div class="label">In progress</div></div>
+      <div class="stat-card accent-green"><div class="num" id="statDone">0</div><div class="label">Completed</div></div>
+    </div>
+
+    <section id="view-upcoming">
+      <div class="panel">
+        <div class="panel-head"><div><h2>Overdue</h2><div class="sub" id="overdueCount">—</div></div></div>
+        <div class="panel-body"><div id="overdueList"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div><h2>Due in the next 7 days</h2><div class="sub" id="soonCount">—</div></div></div>
+        <div class="panel-body"><div id="soonList"></div></div>
+      </div>
+    </section>
+
+    <section id="view-tasks" style="display:none;">
+      <div class="panel">
+        <div class="panel-head">
+          <div><h2>All team tasks</h2><div class="sub" id="taskCount">—</div></div>
+          <div class="filters">
+            <select id="filterAssignee"><option value="">Everyone</option></select>
+            <select id="filterStatus">
+              <option value="">All statuses</option>
+              <option>Not Started</option><option>In Progress</option><option>Completed</option><option>Blocked</option>
+            </select>
+            <select id="filterPriority">
+              <option value="">All priorities</option>
+              <option>High</option><option>Medium</option><option>Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="panel-body"><div id="taskList"></div></div>
+      </div>
+    </section>
+
+    <section id="view-calendar" style="display:none;">
+      <div class="panel">
+        <div class="panel-head"><div><h2>Team calendar</h2><div class="sub">Every team task, plotted on its deadline.</div></div></div>
+        <div class="panel-body"><div id="calendarEl"></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- TASK CREATE / EDIT MODAL -->
+<div class="modal-backdrop" id="taskModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modalHeading">New task</h2>
+      <button class="modal-close" id="modalClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label for="fTitle">Title</label><input type="text" id="fTitle" placeholder="e.g. Finalize August MIS report"></div>
+      <div class="field"><label for="fDescription">Description</label><textarea id="fDescription" rows="3"></textarea></div>
+      <div class="form-row">
+        <div class="field"><label for="fAssignee">Assign to</label><select id="fAssignee"></select></div>
+        <div class="field"><label for="fPriority">Priority</label><select id="fPriority"><option>High</option><option selected>Medium</option><option>Low</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label for="fStart">Start date</label><input type="date" id="fStart"></div>
+        <div class="field"><label for="fEnd">Deadline</label><input type="date" id="fEnd"></div>
+      </div>
+      <div class="field"><label for="fStatus">Status</label><select id="fStatus"><option>Not Started</option><option>In Progress</option><option>Completed</option><option>Blocked</option></select></div>
+      <div class="field" id="progressField" style="display:none;">
+        <label for="fProgressPercent">Progress (%)</label>
+        <input type="range" id="fProgressPercent" min="0" max="100" step="5">
+        <div style="text-align:right; font-size:12.5px; color:var(--muted);" id="fProgressPercentLabel">0%</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger push-left" id="deleteTaskBtn" style="display:none;">Delete</button>
+      <button class="btn btn-ghost" id="cancelTask">Cancel</button>
+      <button class="btn btn-teal" id="saveTask">Save task</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script>
+let session = null;
+let allTasks = [];
+let assignees = [];
+let activeTaskId = null;
+let calYear, calMonth;
+
+initGatedLogin('Manager', (s) => { session = s; boot(); });
+
+function boot() {
+  document.getElementById('userName').textContent = session.name;
+  document.getElementById('avatarInitial').textContent = session.name.charAt(0).toUpperCase();
+  const today = new Date();
+  calYear = today.getFullYear();
+  calMonth = today.getMonth();
+  loadAssignees();
+  loadTasks();
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => { clearSession(); window.location.reload(); });
+
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const view = btn.getAttribute('data-view');
+    document.getElementById('view-upcoming').style.display = view === 'upcoming' ? '' : 'none';
+    document.getElementById('view-tasks').style.display = view === 'tasks' ? '' : 'none';
+    document.getElementById('view-calendar').style.display = view === 'calendar' ? '' : 'none';
+    const titles = { upcoming: 'Upcoming', tasks: 'Team Tasks', calendar: 'Team Calendar' };
+    const subs = {
+      upcoming: "What's due soon and what's overdue, across your team.",
+      tasks: 'Every task you have assigned, editable in one place.',
+      calendar: 'Every team task, plotted on its deadline.'
+    };
+    document.getElementById('pageTitle').textContent = titles[view];
+    document.getElementById('pageSub').textContent = subs[view];
+    if (view === 'calendar') drawCalendar();
+  });
+});
+
+async function loadAssignees() {
+  try {
+    const data = await apiCall('getAssignees', {});
+    assignees = data.assignees;
+    document.getElementById('fAssignee').innerHTML = assignees.map(a => `<option value="${escapeHtml(a.name)}">${escapeHtml(a.name)} (${escapeHtml(a.role)})</option>`).join('');
+    document.getElementById('filterAssignee').innerHTML = '<option value="">Everyone</option>' +
+      assignees.map(a => `<option value="${escapeHtml(a.name)}">${escapeHtml(a.name)}</option>`).join('');
+  } catch (err) { showToast(err.message, true); }
+}
+
+async function loadTasks() {
+  try {
+    const data = await apiCall('getTasks', { role: 'Manager', name: session.name });
+    allTasks = data.tasks;
+    renderStats();
+    renderUpcoming();
+    renderTaskList();
+  } catch (err) { showToast(err.message, true); }
+}
+
+function renderStats() {
+  const overdue = allTasks.filter(t => t.status !== 'Completed' && daysUntil(t.endDate) < 0).length;
+  const soon = allTasks.filter(t => t.status !== 'Completed' && daysUntil(t.endDate) >= 0 && daysUntil(t.endDate) <= 3).length;
+  const inProgress = allTasks.filter(t => t.status === 'In Progress').length;
+  const done = allTasks.filter(t => t.status === 'Completed').length;
+  document.getElementById('statOverdue').textContent = overdue;
+  document.getElementById('statSoon').textContent = soon;
+  document.getElementById('statProgress').textContent = inProgress;
+  document.getElementById('statDone').textContent = done;
+}
+
+function taskRowHtml(t) {
+  const u = urgencyFor(t);
+  return `
+    <div class="task-row" data-id="${escapeHtml(t.taskId)}">
+      <div class="task-main">
+        <div class="title">${escapeHtml(t.title)}</div>
+        <div class="meta">${escapeHtml(t.assignedTo)} · ${escapeHtml(t.status)}</div>
+      </div>
+      <span class="badge tone-${u.tone}">${u.label}</span>
+      <span class="badge tone-${(t.priority || 'medium').toLowerCase()}">${escapeHtml(t.priority || 'Medium')}</span>
+      <div style="width:90px;"><div class="progress-bar"><span style="width:${t.progressPercent || 0}%"></span></div></div>
+      <div class="task-dates">Due ${formatDatePretty(t.endDate)}</div>
+    </div>
+  `;
+}
+
+function renderUpcoming() {
+  const overdue = allTasks.filter(t => t.status !== 'Completed' && daysUntil(t.endDate) < 0).sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
+  const soon = allTasks.filter(t => t.status !== 'Completed' && daysUntil(t.endDate) >= 0 && daysUntil(t.endDate) <= 7).sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
+  document.getElementById('overdueCount').textContent = `${overdue.length} task${overdue.length === 1 ? '' : 's'}`;
+  document.getElementById('soonCount').textContent = `${soon.length} task${soon.length === 1 ? '' : 's'}`;
+  document.getElementById('overdueList').innerHTML = overdue.length ? overdue.map(taskRowHtml).join('') : `<div class="empty-state"><div class="ic">✓</div><div class="txt">Nothing overdue.</div></div>`;
+  document.getElementById('soonList').innerHTML = soon.length ? soon.map(taskRowHtml).join('') : `<div class="empty-state"><div class="ic">—</div><div class="txt">Nothing due in the next week.</div></div>`;
+  document.querySelectorAll('#view-upcoming .task-row').forEach(row => row.addEventListener('click', () => openEditModal(row.getAttribute('data-id'))));
+}
+
+function getFilteredTasks() {
+  const assignee = document.getElementById('filterAssignee').value;
+  const status = document.getElementById('filterStatus').value;
+  const priority = document.getElementById('filterPriority').value;
+  return allTasks.filter(t =>
+    (!assignee || t.assignedTo === assignee) &&
+    (!status || t.status === status) &&
+    (!priority || t.priority === priority)
+  ).sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
+}
+
+function renderTaskList() {
+  const list = getFilteredTasks();
+  document.getElementById('taskCount').textContent = `${list.length} task${list.length === 1 ? '' : 's'}`;
+  const container = document.getElementById('taskList');
+  container.innerHTML = list.length ? list.map(taskRowHtml).join('') : `<div class="empty-state"><div class="ic">＋</div><div class="txt">No tasks yet — create one to get started.</div></div>`;
+  container.querySelectorAll('.task-row').forEach(row => row.addEventListener('click', () => openEditModal(row.getAttribute('data-id'))));
+}
+
+['filterAssignee', 'filterStatus', 'filterPriority'].forEach(id => document.getElementById(id).addEventListener('change', renderTaskList));
+
+document.getElementById('fProgressPercent').addEventListener('input', e => {
+  document.getElementById('fProgressPercentLabel').textContent = e.target.value + '%';
+});
+document.getElementById('fStatus').addEventListener('change', e => {
+  document.getElementById('progressField').style.display = e.target.value === 'Not Started' ? 'none' : '';
+});
+
+function openNewModal() {
+  activeTaskId = null;
+  document.getElementById('modalHeading').textContent = 'New task';
+  document.getElementById('fTitle').value = '';
+  document.getElementById('fDescription').value = '';
+  document.getElementById('fAssignee').value = assignees[0] ? assignees[0].name : '';
+  document.getElementById('fPriority').value = 'Medium';
+  document.getElementById('fStart').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('fEnd').value = '';
+  document.getElementById('fStatus').value = 'Not Started';
+  document.getElementById('fProgressPercent').value = 0;
+  document.getElementById('fProgressPercentLabel').textContent = '0%';
+  document.getElementById('progressField').style.display = 'none';
+  document.getElementById('deleteTaskBtn').style.display = 'none';
+  document.getElementById('taskModalBackdrop').classList.add('show');
+}
+
+function openEditModal(taskId) {
+  const t = allTasks.find(x => x.taskId === taskId);
+  if (!t) return;
+  activeTaskId = taskId;
+  document.getElementById('modalHeading').textContent = 'Edit task';
+  document.getElementById('fTitle').value = t.title;
+  document.getElementById('fDescription').value = t.description || '';
+  document.getElementById('fAssignee').value = t.assignedTo;
+  document.getElementById('fPriority').value = t.priority;
+  document.getElementById('fStart').value = t.startDate;
+  document.getElementById('fEnd').value = t.endDate;
+  document.getElementById('fStatus').value = t.status;
+  document.getElementById('fProgressPercent').value = t.progressPercent || 0;
+  document.getElementById('fProgressPercentLabel').textContent = (t.progressPercent || 0) + '%';
+  document.getElementById('progressField').style.display = t.status === 'Not Started' ? 'none' : '';
+  document.getElementById('deleteTaskBtn').style.display = '';
+  document.getElementById('taskModalBackdrop').classList.add('show');
+}
+
+document.getElementById('newTaskBtn').addEventListener('click', openNewModal);
+function closeModal() { document.getElementById('taskModalBackdrop').classList.remove('show'); activeTaskId = null; }
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('cancelTask').addEventListener('click', closeModal);
+document.getElementById('taskModalBackdrop').addEventListener('click', e => { if (e.target.id === 'taskModalBackdrop') closeModal(); });
+
+document.getElementById('saveTask').addEventListener('click', async () => {
+  const title = document.getElementById('fTitle').value.trim();
+  const start = document.getElementById('fStart').value;
+  const end = document.getElementById('fEnd').value;
+  if (!title) return showToast('Give the task a title.', true);
+  if (!start || !end) return showToast('Start date and deadline are both required.', true);
+  if (end < start) return showToast('Deadline cannot be before the start date.', true);
+
+  const payload = {
+    title,
+    description: document.getElementById('fDescription').value.trim(),
+    assignedTo: document.getElementById('fAssignee').value,
+    priority: document.getElementById('fPriority').value,
+    startDate: start,
+    endDate: end,
+    status: document.getElementById('fStatus').value,
+    progressPercent: Number(document.getElementById('fProgressPercent').value)
+  };
+
+  const btn = document.getElementById('saveTask');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    if (activeTaskId) {
+      await apiCall('updateTask', { taskId: activeTaskId, role: 'Manager', name: session.name, updates: payload });
+      showToast('Task updated.');
+    } else {
+      await apiCall('createTask', { role: 'Manager', name: session.name, task: payload });
+      showToast('Task created.');
+    }
+    closeModal();
+    loadTasks();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save task';
+  }
+});
+
+document.getElementById('deleteTaskBtn').addEventListener('click', async () => {
+  if (!activeTaskId) return;
+  if (!confirm('Delete this task? This cannot be undone.')) return;
+  try {
+    await apiCall('deleteTask', { taskId: activeTaskId, role: 'Manager', name: session.name });
+    showToast('Task deleted.');
+    closeModal();
+    loadTasks();
+  } catch (err) { showToast(err.message, true); }
+});
+
+function drawCalendar() {
+  const el = document.getElementById('calendarEl');
+  const byDate = groupTasksByDate(allTasks);
+  renderCalendar(el, calYear, calMonth, byDate, (dateStr, tasks) => {
+    if (!tasks.length) return;
+    if (tasks.length === 1) { openEditModal(tasks[0].taskId); return; }
+    document.getElementById('filterAssignee').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterPriority').value = '';
+    renderTaskList();
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.nav-btn[data-view="tasks"]').classList.add('active');
+    document.getElementById('view-upcoming').style.display = 'none';
+    document.getElementById('view-calendar').style.display = 'none';
+    document.getElementById('view-tasks').style.display = '';
+    document.getElementById('pageTitle').textContent = 'Team Tasks';
+    document.getElementById('pageSub').textContent = `Showing tasks due ${formatDatePretty(dateStr)}.`;
+  });
+}
+</script>
+</body>
+</html>

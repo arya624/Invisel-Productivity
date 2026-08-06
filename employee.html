@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Employee — Invisel Task Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- LOGIN SCREEN (this link only ever signs in Employees) -->
+<div class="login-shell" id="loginScreen">
+  <div class="login-card">
+    <div class="login-mark">
+      <span class="dot"></span>
+      <span class="word">Invisel<small>Employee Sign-in</small></span>
+    </div>
+    <h1>Sign in</h1>
+    <p class="login-sub">Select your name and enter your 4-digit PIN.</p>
+    <div class="login-error" id="loginError"></div>
+    <div class="field">
+      <label for="nameSelect">Name</label>
+      <select id="nameSelect"><option value="">Loading names…</option></select>
+    </div>
+    <div class="field">
+      <label for="pinInput">PIN</label>
+      <input type="password" id="pinInput" inputmode="numeric" maxlength="4" placeholder="••••">
+    </div>
+    <button class="btn btn-primary" id="loginBtn">Sign in</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app-shell" id="appShell" style="display:none;">
+  <aside class="sidebar">
+    <div class="sidebar-mark">
+      <span class="dot"></span>
+      <span class="word">Invisel<small>Task Tracker</small></span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" data-view="tasks"><span class="ic">☰</span> My Tasks</button>
+      <button class="nav-btn" data-view="calendar"><span class="ic">▦</span> Calendar</button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="avatar" id="avatarInitial">?</div>
+        <div class="who">
+          <div class="name" id="userName">—</div>
+          <div class="role">Employee</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Sign out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="pageTitle">My Tasks</h1>
+        <div class="sub" id="pageSub">Everything assigned to you, sorted by what needs attention first.</div>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card accent-rust"><div class="num" id="statOverdue">0</div><div class="label">Overdue</div></div>
+      <div class="stat-card accent-amber"><div class="num" id="statSoon">0</div><div class="label">Due in 3 days</div></div>
+      <div class="stat-card accent-teal"><div class="num" id="statProgress">0</div><div class="label">In progress</div></div>
+      <div class="stat-card accent-green"><div class="num" id="statDone">0</div><div class="label">Completed</div></div>
+    </div>
+
+    <section id="view-tasks">
+      <div class="panel">
+        <div class="panel-head">
+          <div><h2>Assigned to me</h2><div class="sub" id="taskCount">—</div></div>
+          <div class="filters">
+            <select id="filterStatus">
+              <option value="">All statuses</option>
+              <option>Not Started</option><option>In Progress</option><option>Completed</option><option>Blocked</option>
+            </select>
+            <select id="filterPriority">
+              <option value="">All priorities</option>
+              <option>High</option><option>Medium</option><option>Low</option>
+            </select>
+            <select id="sortBy">
+              <option value="urgency">Sort: Urgency</option>
+              <option value="deadline">Sort: Deadline</option>
+              <option value="priority">Sort: Priority</option>
+            </select>
+          </div>
+        </div>
+        <div class="panel-body"><div id="taskList"></div></div>
+      </div>
+    </section>
+
+    <section id="view-calendar" style="display:none;">
+      <div class="panel">
+        <div class="panel-head"><div><h2>My calendar</h2><div class="sub">Tasks plotted on their deadline (end date).</div></div></div>
+        <div class="panel-body"><div id="calendarEl"></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- TASK DETAIL / UPDATE MODAL (employee: status + progress only) -->
+<div class="modal-backdrop" id="taskModalBackdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modalTaskTitle">Task</h2>
+      <button class="modal-close" id="modalClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="readonly-note">You can update your status and progress here. Only your manager or admin can edit task details, dates, or priority.</div>
+      <div class="field"><label>Description</label><div id="modalDescription" style="font-size:13.5px; color:var(--muted);">—</div></div>
+      <div class="form-row">
+        <div class="field"><label>Assigned by</label><div id="modalAssignedBy" style="padding-top:2px; font-size:13.5px;">—</div></div>
+        <div class="field"><label>Priority</label><div id="modalPriority" style="padding-top:2px; font-size:13.5px;">—</div></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Start date</label><div id="modalStart" style="padding-top:2px; font-size:13.5px;">—</div></div>
+        <div class="field"><label>Deadline</label><div id="modalEnd" style="padding-top:2px; font-size:13.5px;">—</div></div>
+      </div>
+      <div class="field">
+        <label for="statusSelect">Status</label>
+        <select id="statusSelect"><option>Not Started</option><option>In Progress</option><option>Completed</option><option>Blocked</option></select>
+      </div>
+      <div class="field">
+        <label for="progressPercent">Progress (%)</label>
+        <input type="range" id="progressPercent" min="0" max="100" step="5">
+        <div style="text-align:right; font-size:12.5px; color:var(--muted);" id="progressPercentLabel">0%</div>
+      </div>
+      <div class="field">
+        <label for="progressNotes">Progress notes</label>
+        <textarea id="progressNotes" rows="3" placeholder="What's the latest on this task?"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="cancelUpdate">Cancel</button>
+      <button class="btn btn-teal" id="saveUpdate">Save progress</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script>
+let session = null;
+let allTasks = [];
+let activeTaskId = null;
+let calYear, calMonth;
+
+initGatedLogin('Employee', (s) => { session = s; boot(); });
+
+function boot() {
+  document.getElementById('userName').textContent = session.name;
+  document.getElementById('avatarInitial').textContent = session.name.charAt(0).toUpperCase();
+  const today = new Date();
+  calYear = today.getFullYear();
+  calMonth = today.getMonth();
+  loadTasks();
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => { clearSession(); window.location.reload(); });
+
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const view = btn.getAttribute('data-view');
+    document.getElementById('view-tasks').style.display = view === 'tasks' ? '' : 'none';
+    document.getElementById('view-calendar').style.display = view === 'calendar' ? '' : 'none';
+    document.getElementById('pageTitle').textContent = view === 'tasks' ? 'My Tasks' : 'My Calendar';
+    document.getElementById('pageSub').textContent = view === 'tasks'
+      ? 'Everything assigned to you, sorted by what needs attention first.'
+      : 'Tasks plotted on their deadline.';
+    if (view === 'calendar') drawCalendar();
+  });
+});
+
+async function loadTasks() {
+  try {
+    const data = await apiCall('getTasks', { role: 'Employee', name: session.name });
+    allTasks = data.tasks;
+    renderStats();
+    renderTaskList();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+function renderStats() {
+  const overdue = allTasks.filter(t => t.status !== 'Completed' && daysUntil(t.endDate) < 0).length;
+  const soon = allTasks.filter(t => t.status !== 'Completed' && daysUntil(t.endDate) >= 0 && daysUntil(t.endDate) <= 3).length;
+  const inProgress = allTasks.filter(t => t.status === 'In Progress').length;
+  const done = allTasks.filter(t => t.status === 'Completed').length;
+  document.getElementById('statOverdue').textContent = overdue;
+  document.getElementById('statSoon').textContent = soon;
+  document.getElementById('statProgress').textContent = inProgress;
+  document.getElementById('statDone').textContent = done;
+}
+
+function getFilteredSorted() {
+  const status = document.getElementById('filterStatus').value;
+  const priority = document.getElementById('filterPriority').value;
+  const sortBy = document.getElementById('sortBy').value;
+  let list = allTasks.filter(t => (!status || t.status === status) && (!priority || t.priority === priority));
+  const urgencyRank = { overdue: 0, high: 1, medium: 2, low: 3, done: 4 };
+  const priorityRank = { High: 0, Medium: 1, Low: 2 };
+  if (sortBy === 'urgency') {
+    list.sort((a, b) => urgencyRank[urgencyFor(a).tone] - urgencyRank[urgencyFor(b).tone] || daysUntil(a.endDate) - daysUntil(b.endDate));
+  } else if (sortBy === 'deadline') {
+    list.sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
+  } else if (sortBy === 'priority') {
+    list.sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority]);
+  }
+  return list;
+}
+
+function renderTaskList() {
+  const list = getFilteredSorted();
+  document.getElementById('taskCount').textContent = `${list.length} task${list.length === 1 ? '' : 's'}`;
+  const container = document.getElementById('taskList');
+  if (!list.length) {
+    container.innerHTML = `<div class="empty-state"><div class="ic">✓</div><div class="txt">No tasks match these filters. You're all caught up.</div></div>`;
+    return;
+  }
+  container.innerHTML = list.map(t => {
+    const u = urgencyFor(t);
+    return `
+      <div class="task-row" data-id="${escapeHtml(t.taskId)}">
+        <div class="task-main">
+          <div class="title">${escapeHtml(t.title)}</div>
+          <div class="meta">From ${escapeHtml(t.assignedBy)} · ${escapeHtml(t.status)}</div>
+        </div>
+        <span class="badge tone-${u.tone}">${u.label}</span>
+        <span class="badge tone-${(t.priority || 'medium').toLowerCase()}">${escapeHtml(t.priority || 'Medium')}</span>
+        <div style="width:90px;"><div class="progress-bar"><span style="width:${t.progressPercent || 0}%"></span></div></div>
+        <div class="task-dates">Due ${formatDatePretty(t.endDate)}</div>
+      </div>
+    `;
+  }).join('');
+  container.querySelectorAll('.task-row').forEach(row => row.addEventListener('click', () => openTaskModal(row.getAttribute('data-id'))));
+}
+
+['filterStatus', 'filterPriority', 'sortBy'].forEach(id => document.getElementById(id).addEventListener('change', renderTaskList));
+
+function openTaskModal(taskId) {
+  const t = allTasks.find(x => x.taskId === taskId);
+  if (!t) return;
+  activeTaskId = taskId;
+  document.getElementById('modalTaskTitle').textContent = t.title;
+  document.getElementById('modalDescription').textContent = t.description || 'No description provided.';
+  document.getElementById('modalAssignedBy').textContent = t.assignedBy;
+  document.getElementById('modalPriority').textContent = t.priority;
+  document.getElementById('modalStart').textContent = formatDatePretty(t.startDate);
+  document.getElementById('modalEnd').textContent = formatDatePretty(t.endDate);
+  document.getElementById('statusSelect').value = t.status;
+  document.getElementById('progressPercent').value = t.progressPercent || 0;
+  document.getElementById('progressPercentLabel').textContent = (t.progressPercent || 0) + '%';
+  document.getElementById('progressNotes').value = t.progress || '';
+  document.getElementById('taskModalBackdrop').classList.add('show');
+}
+
+document.getElementById('progressPercent').addEventListener('input', e => {
+  document.getElementById('progressPercentLabel').textContent = e.target.value + '%';
+});
+
+function closeModal() { document.getElementById('taskModalBackdrop').classList.remove('show'); activeTaskId = null; }
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('cancelUpdate').addEventListener('click', closeModal);
+document.getElementById('taskModalBackdrop').addEventListener('click', e => { if (e.target.id === 'taskModalBackdrop') closeModal(); });
+
+document.getElementById('saveUpdate').addEventListener('click', async () => {
+  const btn = document.getElementById('saveUpdate');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    await apiCall('updateTask', {
+      taskId: activeTaskId,
+      role: 'Employee',
+      name: session.name,
+      updates: {
+        status: document.getElementById('statusSelect').value,
+        progressPercent: Number(document.getElementById('progressPercent').value),
+        progress: document.getElementById('progressNotes').value
+      }
+    });
+    showToast('Progress saved.');
+    closeModal();
+    loadTasks();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save progress';
+  }
+});
+
+function drawCalendar() {
+  const el = document.getElementById('calendarEl');
+  const byDate = groupTasksByDate(allTasks);
+  renderCalendar(el, calYear, calMonth, byDate, (dateStr, tasks) => {
+    if (!tasks.length) return;
+    if (tasks.length === 1) { openTaskModal(tasks[0].taskId); return; }
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterPriority').value = '';
+    renderTaskList();
+    document.getElementById('view-tasks').style.display = '';
+    document.getElementById('view-calendar').style.display = 'none';
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.nav-btn[data-view="tasks"]').classList.add('active');
+    document.getElementById('pageTitle').textContent = 'My Tasks';
+    document.getElementById('pageSub').textContent = `Showing tasks due ${formatDatePretty(dateStr)}.`;
+  });
+}
+</script>
+</body>
+</html>
