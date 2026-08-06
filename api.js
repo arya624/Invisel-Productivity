@@ -11,13 +11,35 @@ async function apiCall(action, payload) {
   if (!APP_CONFIG.APPS_SCRIPT_URL || APP_CONFIG.APPS_SCRIPT_URL === 'PASTE_YOUR_WEB_APP_URL_HERE') {
     throw new Error('Backend not configured yet. Paste your Apps Script Web App URL into config.js.');
   }
-  const res = await fetch(APP_CONFIG.APPS_SCRIPT_URL, {
-    method: 'POST',
-    // text/plain avoids a CORS preflight request, which Apps Script does not handle.
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, ...payload })
-  });
-  const data = await res.json();
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+  let res;
+  try {
+    res = await fetch(APP_CONFIG.APPS_SCRIPT_URL, {
+      method: 'POST',
+      // text/plain avoids a CORS preflight request, which Apps Script does not handle.
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, ...payload }),
+      signal: controller.signal
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('Request timed out after 20s. The Apps Script backend may be slow, misconfigured, or unreachable — check the deployment is set to "Anyone" and try again.');
+    }
+    throw new Error('Could not reach the backend. Check your internet connection and that config.js has the correct URL.');
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch (err) {
+    throw new Error('Backend returned an unexpected (non-JSON) response. This usually means the Apps Script deployment access isn\'t set to "Anyone" — check Deploy → Manage deployments.');
+  }
+
   if (data.success === false) throw new Error(data.error || 'Request failed.');
   return data;
 }
@@ -193,8 +215,10 @@ function showToast(message, isError) {
  * Renders a month calendar into container `el`.
  * tasksByDate: { 'yyyy-mm-dd': [task, ...] }
  * onDayClick(dateStr, tasksOnDay)
+ * onMonthChange(year, month) — optional, fires on initial render and after
+ * navigating months, so callers can sync other UI (e.g. a log below the grid).
  */
-function renderCalendar(el, year, month, tasksByDate, onDayClick) {
+function renderCalendar(el, year, month, tasksByDate, onDayClick, onMonthChange) {
   const first = new Date(year, month, 1);
   const startWeekday = first.getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -247,9 +271,11 @@ function renderCalendar(el, year, month, tasksByDate, onDayClick) {
       let m = month + dir, y = year;
       if (m < 0) { m = 11; y--; }
       if (m > 11) { m = 0; y++; }
-      renderCalendar(el, y, m, tasksByDate, onDayClick);
+      renderCalendar(el, y, m, tasksByDate, onDayClick, onMonthChange);
     });
   });
+
+  if (onMonthChange) onMonthChange(year, month);
 }
 
 function groupTasksByDate(tasks) {
@@ -259,4 +285,36 @@ function groupTasksByDate(tasks) {
     (map[t.endDate] = map[t.endDate] || []).push(t);
   });
   return map;
+}
+
+// ---------------------------------------------------------------
+// COMPLETED LOG helpers (shared by employee/manager/admin)
+// ---------------------------------------------------------------
+
+/** The date a completed task should be logged under — falls back to
+ * lastUpdated for tasks completed before CompletedDate existed. */
+function effectiveCompletedDate(task) {
+  return task.completedDate || (task.lastUpdated ? task.lastUpdated.slice(0, 10) : null);
+}
+
+function monthKey(dateStr) {
+  return dateStr ? dateStr.slice(0, 7) : null; // 'YYYY-MM'
+}
+
+function monthLabel(key) {
+  const [y, m] = key.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+}
+
+/** Populates a <select> with month options from a list of completed tasks,
+ * newest first, plus an "All time" option. Preserves current selection if
+ * it still exists among the options. */
+function populateLogMonths(selectEl, completedTasks) {
+  const keys = [...new Set(completedTasks.map(t => monthKey(effectiveCompletedDate(t))).filter(Boolean))]
+    .sort((a, b) => b.localeCompare(a));
+  const prev = selectEl.value;
+  selectEl.innerHTML = '<option value="">All time</option>' +
+    keys.map(k => `<option value="${k}">${monthLabel(k)}</option>`).join('');
+  if (keys.includes(prev)) selectEl.value = prev;
+  else if (keys.length) selectEl.value = keys[0]; // default to most recent month with activity
 }

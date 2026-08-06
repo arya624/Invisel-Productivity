@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Employee — Invisel Task Tracker</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -42,6 +40,7 @@
     <nav class="sidebar-nav">
       <button class="nav-btn active" data-view="tasks"><span class="ic">☰</span> My Tasks</button>
       <button class="nav-btn" data-view="calendar"><span class="ic">▦</span> Calendar</button>
+      <button class="nav-btn" data-view="log"><span class="ic">✓</span> Completed Log</button>
     </nav>
     <div class="sidebar-footer">
       <div class="sidebar-user">
@@ -98,6 +97,30 @@
       <div class="panel">
         <div class="panel-head"><div><h2>My calendar</h2><div class="sub">Tasks plotted on their deadline (end date).</div></div></div>
         <div class="panel-body"><div id="calendarEl"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <div><h2>Completed in <span id="calLogMonthLabel">this month</span></h2><div class="sub" id="calLogCount">—</div></div>
+        </div>
+        <div class="panel-body"><div id="calLogList"></div></div>
+      </div>
+    </section>
+
+    <section id="view-log" style="display:none;">
+      <div class="panel">
+        <div class="panel-head">
+          <div><h2>Completed log</h2><div class="sub">Everything you've finished, month by month.</div></div>
+          <div class="filters">
+            <select id="logMonth"></select>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="log-summary">
+            <span class="big" id="logCount">0</span>
+            <span class="txt">completed in this period</span>
+          </div>
+          <div id="logList"></div>
+        </div>
       </div>
     </section>
   </main>
@@ -170,11 +193,17 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     const view = btn.getAttribute('data-view');
     document.getElementById('view-tasks').style.display = view === 'tasks' ? '' : 'none';
     document.getElementById('view-calendar').style.display = view === 'calendar' ? '' : 'none';
-    document.getElementById('pageTitle').textContent = view === 'tasks' ? 'My Tasks' : 'My Calendar';
-    document.getElementById('pageSub').textContent = view === 'tasks'
-      ? 'Everything assigned to you, sorted by what needs attention first.'
-      : 'Tasks plotted on their deadline.';
+    document.getElementById('view-log').style.display = view === 'log' ? '' : 'none';
+    const titles = { tasks: 'My Tasks', calendar: 'My Calendar', log: 'Completed Log' };
+    const subs = {
+      tasks: 'Everything assigned to you, sorted by what needs attention first.',
+      calendar: 'Tasks plotted on their deadline.',
+      log: "Everything you've finished, month by month."
+    };
+    document.getElementById('pageTitle').textContent = titles[view];
+    document.getElementById('pageSub').textContent = subs[view];
     if (view === 'calendar') drawCalendar();
+    if (view === 'log') drawLog();
   });
 });
 
@@ -312,8 +341,74 @@ function drawCalendar() {
     document.querySelector('.nav-btn[data-view="tasks"]').classList.add('active');
     document.getElementById('pageTitle').textContent = 'My Tasks';
     document.getElementById('pageSub').textContent = `Showing tasks due ${formatDatePretty(dateStr)}.`;
+  }, (year, month) => {
+    calYear = year;
+    calMonth = month;
+    renderCalLog(year, month);
   });
 }
+
+function renderCalLog(year, month) {
+  const key = `${year}-${String(month + 1).padStart(2, '0')}`;
+  document.getElementById('calLogMonthLabel').textContent = monthLabel(key);
+  const completed = allTasks.filter(t => t.status === 'Completed' && monthKey(effectiveCompletedDate(t)) === key)
+    .sort((a, b) => (effectiveCompletedDate(b) || '').localeCompare(effectiveCompletedDate(a) || ''));
+
+  document.getElementById('calLogCount').textContent = `${completed.length} task${completed.length === 1 ? '' : 's'}`;
+  const container = document.getElementById('calLogList');
+  if (!completed.length) {
+    container.innerHTML = `<div class="empty-state"><div class="ic">—</div><div class="txt">Nothing completed this month yet.</div></div>`;
+    return;
+  }
+  container.innerHTML = completed.map(t => `
+    <div class="task-row" style="cursor:default;">
+      <div class="task-main">
+        <div class="title">${escapeHtml(t.title)}</div>
+        <div class="meta">From ${escapeHtml(t.assignedBy)}</div>
+      </div>
+      <span class="badge tone-done">Completed</span>
+      <span class="badge tone-${(t.priority || 'medium').toLowerCase()}">${escapeHtml(t.priority || 'Medium')}</span>
+      <div style="width:90px;"></div>
+      <div class="task-dates">${formatDatePretty(effectiveCompletedDate(t))}</div>
+    </div>
+  `).join('');
+}
+
+function drawLog() {
+  const completed = allTasks.filter(t => t.status === 'Completed');
+  populateLogMonths(document.getElementById('logMonth'), completed);
+  renderLog();
+}
+
+function renderLog() {
+  const monthSel = document.getElementById('logMonth').value;
+  const completed = allTasks.filter(t => t.status === 'Completed');
+  const filtered = completed
+    .filter(t => !monthSel || monthKey(effectiveCompletedDate(t)) === monthSel)
+    .sort((a, b) => (effectiveCompletedDate(b) || '').localeCompare(effectiveCompletedDate(a) || ''));
+
+  document.getElementById('logCount').textContent = filtered.length;
+
+  const container = document.getElementById('logList');
+  if (!filtered.length) {
+    container.innerHTML = `<div class="empty-state"><div class="ic">—</div><div class="txt">Nothing completed in this period yet.</div></div>`;
+    return;
+  }
+  container.innerHTML = filtered.map(t => `
+    <div class="task-row" style="cursor:default;">
+      <div class="task-main">
+        <div class="title">${escapeHtml(t.title)}</div>
+        <div class="meta">From ${escapeHtml(t.assignedBy)}</div>
+      </div>
+      <span class="badge tone-done">Completed</span>
+      <span class="badge tone-${(t.priority || 'medium').toLowerCase()}">${escapeHtml(t.priority || 'Medium')}</span>
+      <div style="width:90px;"></div>
+      <div class="task-dates">${formatDatePretty(effectiveCompletedDate(t))}</div>
+    </div>
+  `).join('');
+}
+
+document.getElementById('logMonth').addEventListener('change', renderLog);
 </script>
 </body>
 </html>

@@ -4,14 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Invisel Task Tracker</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <style>
   .hub-shell {
     min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
-    background: radial-gradient(1200px 600px at 15% -10%, rgba(14,124,123,0.12), transparent 60%),
-                radial-gradient(900px 500px at 110% 10%, rgba(125,140,255,0.10), transparent 60%), var(--canvas);
+    background:
+      radial-gradient(1100px 560px at 12% -8%, rgba(0,120,160,0.30), transparent 60%),
+      radial-gradient(900px 520px at 108% 8%, rgba(226,194,255,0.14), transparent 60%),
+      radial-gradient(700px 440px at 50% 120%, rgba(105,228,243,0.10), transparent 60%),
+      var(--bg);
   }
   .hub-card { width: 100%; max-width: 460px; }
   .hub-links { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
@@ -20,8 +21,8 @@
     background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius);
     padding: 16px 18px; text-decoration: none; color: var(--text); box-shadow: var(--shadow);
   }
-  .hub-link:hover { border-color: var(--teal); }
-  .hub-link .t { font-weight: 600; font-size: 14.5px; }
+  .hub-link:hover { border-color: var(--brand-bright); }
+  .hub-link .t { font-weight: 700; font-size: 14.5px; }
   .hub-link .s { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
   .hub-link .arrow { color: var(--muted); font-size: 18px; }
 </style>
@@ -44,11 +45,8 @@
         <div><div class="t">Manager</div><div class="s">Create and edit tasks, team calendar, upcoming</div></div>
         <span class="arrow">→</span>
       </a>
-      <a class="hub-link" href="admin.html">
-        <div><div class="t">Admin</div><div class="s">Everything org-wide, plus manage people</div></div>
-        <span class="arrow">→</span>
-      </a>
     </div>
+    <p style="font-size:12px; color:var(--muted); margin-top:18px; text-align:center;">Admin has a separate, private link — not listed here.</p>
   </div>
 </div>
 </body>

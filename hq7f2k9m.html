@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Manager — Invisel Task Tracker</title>
+<title>Admin — Invisel Task Tracker</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<!-- LOGIN SCREEN (this link only ever signs in Managers) -->
+<!-- LOGIN SCREEN (this link only ever signs in Admins) -->
 <div class="login-shell" id="loginScreen">
   <div class="login-card">
     <div class="login-mark">
       <span class="dot"></span>
-      <span class="word">Invisel<small>Manager Sign-in</small></span>
+      <span class="word">Invisel<small>Admin Sign-in</small></span>
     </div>
     <h1>Sign in</h1>
     <p class="login-sub">Select your name and enter your 4-digit PIN.</p>
@@ -27,6 +27,7 @@
       <input type="password" id="pinInput" inputmode="numeric" maxlength="4" placeholder="••••">
     </div>
     <button class="btn btn-primary" id="loginBtn">Sign in</button>
+    <div class="login-links"><span>First time? Use name "Admin", PIN 1234</span></div>
   </div>
 </div>
 
@@ -39,16 +40,17 @@
     </div>
     <nav class="sidebar-nav">
       <button class="nav-btn active" data-view="upcoming"><span class="ic">◷</span> Upcoming</button>
-      <button class="nav-btn" data-view="tasks"><span class="ic">☰</span> Team Tasks</button>
+      <button class="nav-btn" data-view="tasks"><span class="ic">☰</span> All Tasks</button>
       <button class="nav-btn" data-view="calendar"><span class="ic">▦</span> Calendar</button>
       <button class="nav-btn" data-view="log"><span class="ic">✓</span> Completed Log</button>
+      <button class="nav-btn" data-view="people"><span class="ic">◍</span> People</button>
     </nav>
     <div class="sidebar-footer">
       <div class="sidebar-user">
         <div class="avatar" id="avatarInitial">?</div>
         <div class="who">
           <div class="name" id="userName">—</div>
-          <div class="role">Manager</div>
+          <div class="role">Admin</div>
         </div>
       </div>
       <button class="btn btn-ghost btn-sm" id="logoutBtn">Sign out</button>
@@ -59,7 +61,7 @@
     <div class="topbar">
       <div>
         <h1 id="pageTitle">Upcoming</h1>
-        <div class="sub" id="pageSub">What's due soon and what's overdue, across your team.</div>
+        <div class="sub" id="pageSub">What's due soon and what's overdue, across the whole org.</div>
       </div>
       <button class="btn btn-teal" id="newTaskBtn">+ New task</button>
     </div>
@@ -85,9 +87,10 @@
     <section id="view-tasks" style="display:none;">
       <div class="panel">
         <div class="panel-head">
-          <div><h2>All team tasks</h2><div class="sub" id="taskCount">—</div></div>
+          <div><h2>All tasks, org-wide</h2><div class="sub" id="taskCount">—</div></div>
           <div class="filters">
             <select id="filterAssignee"><option value="">Everyone</option></select>
+            <select id="filterAssignedBy"><option value="">Any manager</option></select>
             <select id="filterStatus">
               <option value="">All statuses</option>
               <option>Not Started</option><option>In Progress</option><option>Completed</option><option>Blocked</option>
@@ -104,7 +107,7 @@
 
     <section id="view-calendar" style="display:none;">
       <div class="panel">
-        <div class="panel-head"><div><h2>Team calendar</h2><div class="sub">Every team task, plotted on its deadline.</div></div></div>
+        <div class="panel-head"><div><h2>Org calendar</h2><div class="sub">Every task, org-wide, plotted on its deadline.</div></div></div>
         <div class="panel-body"><div id="calendarEl"></div></div>
       </div>
       <div class="panel">
@@ -118,7 +121,7 @@
     <section id="view-log" style="display:none;">
       <div class="panel">
         <div class="panel-head">
-          <div><h2>Completed log</h2><div class="sub">Everything your team has finished, month by month.</div></div>
+          <div><h2>Completed log</h2><div class="sub">Everything completed org-wide, month by month.</div></div>
           <div class="filters">
             <select id="logAssignee"><option value="">Everyone</option></select>
             <select id="logMonth"></select>
@@ -130,6 +133,41 @@
             <span class="txt">completed in this period</span>
           </div>
           <div id="logList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PEOPLE VIEW -->
+    <section id="view-people" style="display:none;">
+      <div class="panel">
+        <div class="panel-head">
+          <div><h2>Add several people at once</h2><div class="sub">One line per person: Name, PIN, Role, Reports to (optional). Role must be Employee, Manager, or Admin.</div></div>
+          <button class="btn btn-ghost btn-sm" id="loadTemplateBtn">Load Invisel team template</button>
+        </div>
+        <div class="panel-body">
+          <div class="field">
+            <textarea id="bulkText" rows="8" placeholder="Ritu Parekh, 1001, Employee, Sumedh Sir
+Sumedh Sir, 2001, Manager
+Arya Malgundkar, 9001, Admin"></textarea>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:8px;">
+            <button class="btn btn-ghost" id="clearBulkBtn">Clear</button>
+            <button class="btn btn-teal" id="submitBulkBtn">Add all</button>
+          </div>
+          <div id="bulkResults" style="margin-top:14px;"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div><h2>People</h2><div class="sub" id="peopleCount">—</div></div>
+          <button class="btn btn-teal btn-sm" id="newPersonBtn">+ Add one person</button>
+        </div>
+        <div class="panel-body">
+          <table class="people-table">
+            <thead><tr><th>Name</th><th>Role</th><th>Reports to</th><th>Status</th><th></th></tr></thead>
+            <tbody id="peopleTableBody"></tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -170,16 +208,47 @@
   </div>
 </div>
 
+<!-- PERSON CREATE / EDIT MODAL -->
+<div class="modal-backdrop" id="personModalBackdrop">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head">
+      <h2 id="personModalHeading">Add person</h2>
+      <button class="modal-close" id="personModalClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label for="pName">Full name</label><input type="text" id="pName" placeholder="As it should appear everywhere"></div>
+      <div class="field"><label for="pPin">4-digit PIN</label><input type="text" id="pPin" inputmode="numeric" maxlength="4" placeholder="1234"></div>
+      <div class="field">
+        <label>Role</label>
+        <div class="role-picker" id="pRolePicker">
+          <button type="button" data-role="Employee" class="active">Employee</button>
+          <button type="button" data-role="Manager">Manager</button>
+          <button type="button" data-role="Admin">Admin</button>
+        </div>
+      </div>
+      <div class="field"><label for="pReportsTo">Reports to (optional, for reference)</label><input type="text" id="pReportsTo" placeholder="e.g. Sumedh Sir"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost push-left" id="toggleActiveBtn" style="display:none;">Deactivate</button>
+      <button class="btn btn-ghost" id="cancelPerson">Cancel</button>
+      <button class="btn btn-teal" id="savePerson">Save person</button>
+    </div>
+  </div>
+</div>
+
 <script src="config.js"></script>
 <script src="api.js"></script>
 <script>
 let session = null;
 let allTasks = [];
 let assignees = [];
+let allPeople = [];
 let activeTaskId = null;
+let activePersonName = null;
+let selectedRole = 'Employee';
 let calYear, calMonth;
 
-initGatedLogin('Manager', (s) => { session = s; boot(); });
+initGatedLogin('Admin', (s) => { session = s; boot(); });
 
 function boot() {
   document.getElementById('userName').textContent = session.name;
@@ -189,6 +258,7 @@ function boot() {
   calMonth = today.getMonth();
   loadAssignees();
   loadTasks();
+  loadPeople();
 }
 
 document.getElementById('logoutBtn').addEventListener('click', () => { clearSession(); window.location.reload(); });
@@ -198,19 +268,20 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     const view = btn.getAttribute('data-view');
-    document.getElementById('view-upcoming').style.display = view === 'upcoming' ? '' : 'none';
-    document.getElementById('view-tasks').style.display = view === 'tasks' ? '' : 'none';
-    document.getElementById('view-calendar').style.display = view === 'calendar' ? '' : 'none';
-    document.getElementById('view-log').style.display = view === 'log' ? '' : 'none';
-    const titles = { upcoming: 'Upcoming', tasks: 'Team Tasks', calendar: 'Team Calendar', log: 'Completed Log' };
+    ['upcoming', 'tasks', 'calendar', 'log', 'people'].forEach(v => {
+      document.getElementById('view-' + v).style.display = v === view ? '' : 'none';
+    });
+    const titles = { upcoming: 'Upcoming', tasks: 'All Tasks', calendar: 'Org Calendar', log: 'Completed Log', people: 'People' };
     const subs = {
-      upcoming: "What's due soon and what's overdue, across your team.",
-      tasks: 'Every task you have assigned, editable in one place.',
-      calendar: 'Every team task, plotted on its deadline.',
-      log: "Everything your team has finished, month by month."
+      upcoming: "What's due soon and what's overdue, across the whole org.",
+      tasks: 'Every task in the org, editable in one place.',
+      calendar: 'Every task, org-wide, plotted on its deadline.',
+      log: 'Everything completed org-wide, month by month.',
+      people: 'Add, edit, and deactivate employees, managers, and admins.'
     };
     document.getElementById('pageTitle').textContent = titles[view];
     document.getElementById('pageSub').textContent = subs[view];
+    document.getElementById('newTaskBtn').style.display = (view === 'people' || view === 'log') ? 'none' : '';
     if (view === 'calendar') drawCalendar();
     if (view === 'log') drawLog();
   });
@@ -230,11 +301,22 @@ async function loadAssignees() {
 
 async function loadTasks() {
   try {
-    const data = await apiCall('getTasks', { role: 'Manager', name: session.name });
+    const data = await apiCall('getTasks', { role: 'Admin', name: session.name });
     allTasks = data.tasks;
+    const managers = [...new Set(allTasks.map(t => t.assignedBy))].sort();
+    document.getElementById('filterAssignedBy').innerHTML = '<option value="">Any manager</option>' +
+      managers.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
     renderStats();
     renderUpcoming();
     renderTaskList();
+  } catch (err) { showToast(err.message, true); }
+}
+
+async function loadPeople() {
+  try {
+    const data = await apiCall('getPeople', { role: 'Admin' });
+    allPeople = data.people;
+    renderPeople();
   } catch (err) { showToast(err.message, true); }
 }
 
@@ -255,7 +337,7 @@ function taskRowHtml(t) {
     <div class="task-row" data-id="${escapeHtml(t.taskId)}">
       <div class="task-main">
         <div class="title">${escapeHtml(t.title)}</div>
-        <div class="meta">${escapeHtml(t.assignedTo)} · ${escapeHtml(t.status)}</div>
+        <div class="meta">${escapeHtml(t.assignedTo)} · assigned by ${escapeHtml(t.assignedBy)} · ${escapeHtml(t.status)}</div>
       </div>
       <span class="badge tone-${u.tone}">${u.label}</span>
       <span class="badge tone-${(t.priority || 'medium').toLowerCase()}">${escapeHtml(t.priority || 'Medium')}</span>
@@ -277,10 +359,12 @@ function renderUpcoming() {
 
 function getFilteredTasks() {
   const assignee = document.getElementById('filterAssignee').value;
+  const assignedBy = document.getElementById('filterAssignedBy').value;
   const status = document.getElementById('filterStatus').value;
   const priority = document.getElementById('filterPriority').value;
   return allTasks.filter(t =>
     (!assignee || t.assignedTo === assignee) &&
+    (!assignedBy || t.assignedBy === assignedBy) &&
     (!status || t.status === status) &&
     (!priority || t.priority === priority)
   ).sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
@@ -290,11 +374,11 @@ function renderTaskList() {
   const list = getFilteredTasks();
   document.getElementById('taskCount').textContent = `${list.length} task${list.length === 1 ? '' : 's'}`;
   const container = document.getElementById('taskList');
-  container.innerHTML = list.length ? list.map(taskRowHtml).join('') : `<div class="empty-state"><div class="ic">＋</div><div class="txt">No tasks yet — create one to get started.</div></div>`;
+  container.innerHTML = list.length ? list.map(taskRowHtml).join('') : `<div class="empty-state"><div class="ic">＋</div><div class="txt">No tasks yet.</div></div>`;
   container.querySelectorAll('.task-row').forEach(row => row.addEventListener('click', () => openEditModal(row.getAttribute('data-id'))));
 }
 
-['filterAssignee', 'filterStatus', 'filterPriority'].forEach(id => document.getElementById(id).addEventListener('change', renderTaskList));
+['filterAssignee', 'filterAssignedBy', 'filterStatus', 'filterPriority'].forEach(id => document.getElementById(id).addEventListener('change', renderTaskList));
 
 document.getElementById('fProgressPercent').addEventListener('input', e => {
   document.getElementById('fProgressPercentLabel').textContent = e.target.value + '%';
@@ -374,10 +458,10 @@ document.getElementById('saveTask').addEventListener('click', async () => {
   btn.textContent = 'Saving…';
   try {
     if (activeTaskId) {
-      await apiCall('updateTask', { taskId: activeTaskId, role: 'Manager', name: session.name, updates: payload });
+      await apiCall('updateTask', { taskId: activeTaskId, role: 'Admin', name: session.name, updates: payload });
       showToast('Task updated.');
     } else {
-      await apiCall('createTask', { role: 'Manager', name: session.name, task: payload });
+      await apiCall('createTask', { role: 'Admin', name: session.name, task: payload });
       showToast('Task created.');
     }
     closeModal();
@@ -396,7 +480,7 @@ document.getElementById('deleteTaskBtn').addEventListener('click', async () => {
   if (!activeTaskId) return;
   if (!confirm('Delete this task? This cannot be undone.')) return;
   try {
-    await apiCall('deleteTask', { taskId: activeTaskId, role: 'Manager', name: session.name });
+    await apiCall('deleteTask', { taskId: activeTaskId, role: 'Admin', name: session.name });
     showToast('Task deleted.');
     closeModal();
     loadTasks();
@@ -410,6 +494,7 @@ function drawCalendar() {
     if (!tasks.length) return;
     if (tasks.length === 1) { openEditModal(tasks[0].taskId); return; }
     document.getElementById('filterAssignee').value = '';
+    document.getElementById('filterAssignedBy').value = '';
     document.getElementById('filterStatus').value = '';
     document.getElementById('filterPriority').value = '';
     renderTaskList();
@@ -417,8 +502,9 @@ function drawCalendar() {
     document.querySelector('.nav-btn[data-view="tasks"]').classList.add('active');
     document.getElementById('view-upcoming').style.display = 'none';
     document.getElementById('view-calendar').style.display = 'none';
+    document.getElementById('view-people').style.display = 'none';
     document.getElementById('view-tasks').style.display = '';
-    document.getElementById('pageTitle').textContent = 'Team Tasks';
+    document.getElementById('pageTitle').textContent = 'All Tasks';
     document.getElementById('pageSub').textContent = `Showing tasks due ${formatDatePretty(dateStr)}.`;
   }, (year, month) => {
     calYear = year;
@@ -443,7 +529,7 @@ function renderCalLog(year, month) {
     <div class="task-row" style="cursor:default;">
       <div class="task-main">
         <div class="title">${escapeHtml(t.title)}</div>
-        <div class="meta">${escapeHtml(t.assignedTo)}</div>
+        <div class="meta">${escapeHtml(t.assignedTo)} · assigned by ${escapeHtml(t.assignedBy)}</div>
       </div>
       <span class="badge tone-done">Completed</span>
       <span class="badge tone-${(t.priority || 'medium').toLowerCase()}">${escapeHtml(t.priority || 'Medium')}</span>
@@ -478,7 +564,7 @@ function renderLog() {
     <div class="task-row" style="cursor:default;">
       <div class="task-main">
         <div class="title">${escapeHtml(t.title)}</div>
-        <div class="meta">${escapeHtml(t.assignedTo)}</div>
+        <div class="meta">${escapeHtml(t.assignedTo)} · assigned by ${escapeHtml(t.assignedBy)}</div>
       </div>
       <span class="badge tone-done">Completed</span>
       <span class="badge tone-${(t.priority || 'medium').toLowerCase()}">${escapeHtml(t.priority || 'Medium')}</span>
@@ -490,6 +576,174 @@ function renderLog() {
 
 document.getElementById('logMonth').addEventListener('change', renderLog);
 document.getElementById('logAssignee').addEventListener('change', renderLog);
+
+// ---------------- PEOPLE ----------------
+
+function renderPeople() {
+  document.getElementById('peopleCount').textContent = `${allPeople.length} people`;
+  const tbody = document.getElementById('peopleTableBody');
+  tbody.innerHTML = allPeople.map(p => `
+    <tr class="${p.active ? '' : 'inactive-row'}" data-name="${escapeHtml(p.name)}">
+      <td>${escapeHtml(p.name)}</td>
+      <td><span class="role-pill ${p.role === 'Manager' ? 'pill-manager' : p.role === 'Admin' ? 'pill-admin' : ''}">${escapeHtml(p.role)}</span></td>
+      <td>${escapeHtml(p.reportsTo || '—')}</td>
+      <td>${p.active ? 'Active' : 'Deactivated'}</td>
+      <td style="text-align:right;"><button class="btn btn-ghost btn-sm edit-person-btn">Edit</button></td>
+    </tr>
+  `).join('');
+  tbody.querySelectorAll('.edit-person-btn').forEach(btn => {
+    btn.addEventListener('click', () => openEditPersonModal(btn.closest('tr').getAttribute('data-name')));
+  });
+}
+
+document.getElementById('pRolePicker').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-role]');
+  if (!btn) return;
+  selectedRole = btn.getAttribute('data-role');
+  document.querySelectorAll('#pRolePicker button').forEach(b => b.classList.toggle('active', b === btn));
+});
+
+function openNewPersonModal() {
+  activePersonName = null;
+  selectedRole = 'Employee';
+  document.getElementById('personModalHeading').textContent = 'Add person';
+  document.getElementById('pName').value = '';
+  document.getElementById('pPin').value = '';
+  document.getElementById('pReportsTo').value = '';
+  document.querySelectorAll('#pRolePicker button').forEach(b => b.classList.toggle('active', b.getAttribute('data-role') === 'Employee'));
+  document.getElementById('toggleActiveBtn').style.display = 'none';
+  document.getElementById('personModalBackdrop').classList.add('show');
+}
+
+function openEditPersonModal(name) {
+  const p = allPeople.find(x => x.name === name);
+  if (!p) return;
+  activePersonName = name;
+  selectedRole = p.role;
+  document.getElementById('personModalHeading').textContent = 'Edit person';
+  document.getElementById('pName').value = p.name;
+  document.getElementById('pPin').value = p.pin;
+  document.getElementById('pReportsTo').value = p.reportsTo || '';
+  document.querySelectorAll('#pRolePicker button').forEach(b => b.classList.toggle('active', b.getAttribute('data-role') === p.role));
+  const toggleBtn = document.getElementById('toggleActiveBtn');
+  toggleBtn.style.display = '';
+  toggleBtn.textContent = p.active ? 'Deactivate' : 'Reactivate';
+  document.getElementById('personModalBackdrop').classList.add('show');
+}
+
+document.getElementById('newPersonBtn').addEventListener('click', openNewPersonModal);
+function closePersonModal() { document.getElementById('personModalBackdrop').classList.remove('show'); activePersonName = null; }
+document.getElementById('personModalClose').addEventListener('click', closePersonModal);
+document.getElementById('cancelPerson').addEventListener('click', closePersonModal);
+document.getElementById('personModalBackdrop').addEventListener('click', e => { if (e.target.id === 'personModalBackdrop') closePersonModal(); });
+
+document.getElementById('savePerson').addEventListener('click', async () => {
+  const name = document.getElementById('pName').value.trim();
+  const pin = document.getElementById('pPin').value.trim();
+  const reportsTo = document.getElementById('pReportsTo').value.trim();
+  if (!name) return showToast('Enter a name.', true);
+  if (!/^\d{4}$/.test(pin)) return showToast('PIN must be exactly 4 digits.', true);
+
+  const btn = document.getElementById('savePerson');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    if (activePersonName) {
+      await apiCall('updatePerson', { role: 'Admin', originalName: activePersonName, person: { name, pin, role: selectedRole, reportsTo } });
+      showToast('Person updated.');
+    } else {
+      await apiCall('addPerson', { role: 'Admin', person: { name, pin, role: selectedRole, reportsTo } });
+      showToast('Person added.');
+    }
+    closePersonModal();
+    loadPeople();
+    loadAssignees();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save person';
+  }
+});
+
+document.getElementById('toggleActiveBtn').addEventListener('click', async () => {
+  if (!activePersonName) return;
+  const p = allPeople.find(x => x.name === activePersonName);
+  try {
+    await apiCall('setPersonActive', { role: 'Admin', name: activePersonName, active: !p.active });
+    showToast(p.active ? 'Person deactivated.' : 'Person reactivated.');
+    closePersonModal();
+    loadPeople();
+    loadAssignees();
+  } catch (err) { showToast(err.message, true); }
+});
+
+// ---------------- BULK ADD ----------------
+
+const TEAM_TEMPLATE = [
+  ['Arya Malgundkar', '9001', 'Admin', ''],
+  ['Sumedh Sir', '2001', 'Manager', ''],
+  ['Atharva Sir', '2002', 'Manager', ''],
+  ['Govinda Sir', '2003', 'Manager', ''],
+  ['Ritu Parekh', '1001', 'Employee', ''],
+  ['Kunal Sonavne', '1002', 'Employee', ''],
+  ['Sharvari Panse', '1003', 'Employee', ''],
+  ['Sampada Suryavanshi', '1004', 'Employee', ''],
+  ['Sarvesh Bamnodkar', '1005', 'Employee', ''],
+  ['Avishkar Monite', '1006', 'Employee', ''],
+  ['Atharva Kulkarni', '1007', 'Employee', ''],
+  ['Akshay Pawar', '1008', 'Employee', ''],
+  ['Vaishnavi Deshpande', '1009', 'Employee', ''],
+  ['Santosh Tonsey', '1010', 'Employee', ''],
+  ['Yash Jain', '1011', 'Employee', ''],
+  ['Sujal Pawar', '1012', 'Employee', ''],
+  ['Mayur Dighe', '1013', 'Employee', '']
+];
+
+document.getElementById('loadTemplateBtn').addEventListener('click', () => {
+  document.getElementById('bulkText').value = TEAM_TEMPLATE.map(r => r.filter(Boolean).join(', ')).join('\n');
+});
+
+document.getElementById('clearBulkBtn').addEventListener('click', () => {
+  document.getElementById('bulkText').value = '';
+  document.getElementById('bulkResults').innerHTML = '';
+});
+
+function parseBulkText(text) {
+  return text.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+    const parts = line.split(',').map(p => p.trim());
+    return { name: parts[0] || '', pin: parts[1] || '', role: parts[2] || '', reportsTo: parts[3] || '' };
+  });
+}
+
+document.getElementById('submitBulkBtn').addEventListener('click', async () => {
+  const rows = parseBulkText(document.getElementById('bulkText').value);
+  if (!rows.length) return showToast('Add at least one line first.', true);
+
+  const btn = document.getElementById('submitBulkBtn');
+  btn.disabled = true;
+  btn.textContent = 'Adding…';
+  try {
+    const data = await apiCall('bulkAddPeople', { role: 'Admin', people: rows });
+    const resultsEl = document.getElementById('bulkResults');
+    resultsEl.innerHTML = data.results.map(r => `
+      <div style="display:flex; align-items:center; gap:8px; padding:6px 0; font-size:13px;">
+        <span class="badge ${r.success ? 'tone-done' : 'tone-overdue'}">${r.success ? 'Added' : 'Skipped'}</span>
+        <span>${escapeHtml(r.name)}</span>
+        ${r.error ? `<span style="color:var(--muted);">— ${escapeHtml(r.error)}</span>` : ''}
+      </div>
+    `).join('');
+    const addedCount = data.results.filter(r => r.success).length;
+    showToast(`${addedCount} of ${data.results.length} added.`);
+    loadPeople();
+    loadAssignees();
+  } catch (err) {
+    showToast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Add all';
+  }
+});
 </script>
 </body>
 </html>
