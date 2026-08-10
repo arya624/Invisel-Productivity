@@ -3,414 +3,1377 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Employee — Invisel Task Tracker</title>
-<link rel="preconnect" href="https://script.google.com">
-<link rel="stylesheet" href="styles.css">
+<title>Invisel Task Tracker — Employee</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F7F8;
+  --surface:#FFFFFF;
+  --surface-alt:#F0F3F4;
+  --border:#E2E6E8;
+  --ink:#12181F;
+  --ink-soft:#5B6472;
+  --ink-faint:#8A93A0;
+  --accent:#0E7C86;
+  --accent-dark:#0B646C;
+  --accent-soft:#E4F2F1;
+  --high:#B5432E;
+  --high-soft:#FBEAE6;
+  --medium:#B0791F;
+  --medium-soft:#FBF1DF;
+  --low:#2F6FA8;
+  --low-soft:#E7F0F8;
+  --success:#2C8F5B;
+  --success-soft:#E5F5EB;
+  --blocked:#9C3B3B;
+  --blocked-soft:#F6E8E8;
+  --neutral:#6B7280;
+  --neutral-soft:#EEF0F2;
+  --radius:12px;
+  --font-display:'Space Grotesk',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+}
+button, select, input, textarea{ font-family:inherit; font-size:inherit; color:inherit; }
+button{ cursor:pointer; }
+a{ color:inherit; }
+:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+.topbar{ background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+.sheen{ height:3px; background:linear-gradient(90deg, var(--accent), #cfe9e6 45%, var(--accent) 90%); background-size:200% 100%; animation:sheen-move 7s linear infinite; }
+@media (prefers-reduced-motion: reduce){ .sheen{ animation:none; } }
+@keyframes sheen-move{ 0%{background-position:0% 0;} 100%{background-position:200% 0;} }
+
+.topbar-inner{ max-width:1180px; margin:0 auto; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.brand{ display:flex; align-items:center; gap:10px; }
+.brand-mark{ width:14px; height:14px; border-radius:50% 50% 50% 4px; background:var(--accent); display:inline-block; transform:rotate(-45deg); flex-shrink:0; }
+.brand-name{ font-family:var(--font-display); font-weight:700; font-size:18px; letter-spacing:0.01em; line-height:1.1; }
+.brand-sub{ font-size:12.5px; color:var(--ink-soft); margin-top:1px; }
+
+.topbar-right{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+
+.role-switch{ display:flex; background:var(--surface-alt); border:1px solid var(--border); border-radius:999px; padding:3px; gap:2px; }
+.role-tab{ border:none; background:transparent; padding:8px 16px; border-radius:999px; font-weight:600; font-size:13.5px; color:var(--ink-soft); transition:background .15s ease, color .15s ease; text-decoration:none; display:inline-flex; align-items:center; }
+.role-tab[aria-selected="true"]{ background:var(--ink); color:#fff; }
+.role-tab:hover:not([aria-selected="true"]){ color:var(--ink); }
+
+.sync-status{ display:flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-faint); }
+.dot-status{ width:7px; height:7px; border-radius:50%; background:var(--ink-faint); display:inline-block; flex-shrink:0; }
+.dot-status.dot-ok{ background:var(--success); }
+.dot-status.dot-warn{ background:var(--medium); }
+.dot-status.dot-off{ background:var(--high); }
+
+main{ max-width:1180px; margin:0 auto; padding:24px 20px 80px; }
+
+.banner{ border:1px solid #f0dfb8; background:var(--medium-soft); color:var(--medium); border-radius:10px; padding:11px 14px; font-size:13px; margin-bottom:20px; line-height:1.5; }
+.banner.banner-error{ border-color:#f0c9c0; background:var(--high-soft); color:var(--high); }
+.banner code{ background:rgba(0,0,0,0.06); padding:1px 5px; border-radius:4px; font-family:var(--font-mono); font-size:12px; }
+
+.section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:32px 0 14px; flex-wrap:wrap; }
+.section-head:first-child{ margin-top:0; }
+.section-title{ font-family:var(--font-display); font-weight:700; font-size:16px; margin:0; }
+.section-hint{ font-size:12.5px; color:var(--ink-faint); }
+
+.stat-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; }
+.stat-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+.stat-value{ font-family:var(--font-mono); font-weight:600; font-size:26px; line-height:1; }
+.stat-label{ font-size:12.5px; color:var(--ink-soft); margin-top:8px; }
+.stat-card.warn .stat-value{ color:var(--high); }
+.stat-card.ok .stat-value{ color:var(--success); }
+
+.panel{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px; }
+.panel + .panel{ margin-top:14px; }
+.panel h3{ margin:0 0 12px; font-size:13px; color:var(--ink-soft); font-weight:600; }
+
+.filter-bar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+.filter-bar select{ background:var(--surface-alt); border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:13px; }
+.btn{ border:1px solid var(--border); background:var(--surface); padding:8px 14px; border-radius:8px; font-weight:600; font-size:13px; transition:border-color .15s ease, background .15s ease; }
+.btn:hover{ border-color:var(--ink-faint); }
+.btn-primary{ background:var(--ink); color:#fff; border-color:var(--ink); }
+.btn-primary:hover{ background:var(--accent-dark); border-color:var(--accent-dark); }
+.btn-danger{ background:var(--surface); color:var(--high); border-color:var(--high-soft); }
+.btn-danger:hover{ background:var(--high-soft); }
+.btn-ghost{ border-color:transparent; background:transparent; }
+.btn-ghost:hover{ background:var(--surface-alt); }
+.btn-sm{ padding:5px 10px; font-size:12px; }
+
+.task-list{ display:flex; flex-direction:column; gap:8px; }
+.task-card{ display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--surface); cursor:pointer; transition:border-color .15s ease, box-shadow .15s ease; flex-wrap:wrap; }
+.task-card:hover{ border-color:var(--accent); box-shadow:0 1px 0 rgba(14,124,134,0.08); }
+.task-main{ flex:1 1 240px; min-width:0; }
+.task-title{ font-weight:600; font-size:14px; margin:0 0 3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.task-meta{ font-size:12px; color:var(--ink-soft); display:flex; gap:8px; flex-wrap:wrap; }
+.badge{ display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; font-size:11.5px; font-weight:600; white-space:nowrap; }
+.badge-dot{ width:6px; height:6px; border-radius:50%; display:inline-block; }
+.badge-high{ background:var(--high-soft); color:var(--high); }
+.badge-high .badge-dot{ background:var(--high); }
+.badge-medium{ background:var(--medium-soft); color:var(--medium); }
+.badge-medium .badge-dot{ background:var(--medium); }
+.badge-low{ background:var(--low-soft); color:var(--low); }
+.badge-low .badge-dot{ background:var(--low); }
+.badge-status{ background:var(--neutral-soft); color:var(--neutral); }
+.badge-status.st-completed{ background:var(--success-soft); color:var(--success); }
+.badge-status.st-blocked{ background:var(--blocked-soft); color:var(--blocked); }
+.badge-status.st-progress{ background:var(--low-soft); color:var(--low); }
+.due-label{ font-family:var(--font-mono); font-size:12px; }
+.due-overdue{ color:var(--high); font-weight:600; }
+.due-soon{ color:var(--medium); font-weight:600; }
+.quick-status{ border:1px solid var(--border); border-radius:7px; padding:5px 8px; font-size:12px; background:var(--surface-alt); }
+
+.bar-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:13px; }
+.bar-label{ width:110px; flex-shrink:0; color:var(--ink-soft); }
+.bar-track{ flex:1; background:var(--surface-alt); border-radius:999px; height:8px; overflow:hidden; }
+.bar-fill{ height:100%; border-radius:999px; }
+.bar-count{ width:28px; text-align:right; font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); flex-shrink:0; }
+
+table.workload{ width:100%; border-collapse:collapse; font-size:13px; }
+table.workload th{ text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-faint); font-weight:600; padding:0 10px 8px; border-bottom:1px solid var(--border); }
+table.workload td{ padding:10px; border-bottom:1px solid var(--border); }
+table.workload tr:last-child td{ border-bottom:none; }
+
+.roster-card{ padding:10px 0; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:8px; }
+.roster-card:last-of-type{ border-bottom:none; }
+.roster-card-top{ display:flex; align-items:center; gap:8px; }
+.roster-card-top input[type=text]{ flex:1; border:1px solid transparent; background:transparent; padding:6px 8px; border-radius:6px; font-size:13.5px; font-weight:600; }
+.roster-card-top input[type=text]:hover, .roster-card-top input[type=text]:focus{ border-color:var(--border); background:var(--surface-alt); }
+.roster-card-bottom{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-soft); }
+.roster-check{ display:flex; align-items:center; gap:6px; cursor:pointer; }
+.roster-card-bottom select{ border:1px solid var(--border); border-radius:7px; padding:5px 8px; font-size:12.5px; background:var(--surface-alt); }
+.add-row{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center; }
+.add-row input[type=text]{ flex:1 1 180px; border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13.5px; }
+.add-row label{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--ink-soft); white-space:nowrap; }
+.add-row select{ border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-size:12.5px; background:var(--surface-alt); }
+
+.empty-state{ text-align:center; padding:40px 20px; color:var(--ink-soft); font-size:13.5px; }
+.empty-state strong{ display:block; color:var(--ink); font-size:14.5px; margin-bottom:4px; }
+
+.who-am-i{ display:flex; align-items:center; gap:10px; margin-bottom:18px; background:var(--accent-soft); border:1px solid #cfe6e4; border-radius:10px; padding:10px 14px; font-size:13.5px; }
+.who-am-i select{ border:1px solid var(--border); border-radius:7px; padding:6px 10px; font-weight:600; background:var(--surface); }
+
+.login-wrap{ display:flex; justify-content:center; padding-top:8vh; }
+.login-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:28px; width:100%; max-width:340px; box-shadow:0 12px 30px rgba(0,0,0,0.06); }
+.login-error{ color:var(--high); font-size:12.5px; margin:8px 0 0; }
+.pin-input{ width:64px; border:1px solid var(--border); border-radius:7px; padding:5px 8px; font-size:12.5px; font-family:var(--font-mono); background:var(--surface-alt); letter-spacing:0.05em; }
+
+.view-toggle{ margin-bottom:14px; }
+
+.calendar-head{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.calendar-month-label{ font-family:var(--font-display); font-weight:700; font-size:15px; margin:0 4px; min-width:150px; }
+.calendar-daynames{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px; padding:0 2px; }
+.calendar-daynames span{ text-align:center; }
+.calendar-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.calendar-cell{ background:var(--surface); border:1px solid var(--border); border-radius:8px; min-height:88px; padding:6px; cursor:pointer; display:flex; flex-direction:column; gap:3px; overflow:hidden; }
+.calendar-cell:hover{ border-color:var(--accent); }
+.calendar-cell.other-month{ opacity:.4; }
+.calendar-cell.today{ border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+.calendar-cell.selected{ background:var(--accent-soft); }
+.calendar-date{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-soft); font-weight:600; }
+.cal-chip{ font-size:10.5px; padding:2px 6px; border-radius:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+.cal-chip.badge-high{ background:var(--high-soft); color:var(--high); }
+.cal-chip.badge-medium{ background:var(--medium-soft); color:var(--medium); }
+.cal-chip.badge-low{ background:var(--low-soft); color:var(--low); }
+.cal-chip.st-completed{ background:var(--success-soft); color:var(--success); }
+.cal-more{ font-size:10.5px; color:var(--ink-faint); font-weight:600; cursor:pointer; }
+
+.upcoming-day-group{ margin-bottom:16px; }
+.upcoming-day-group:last-child{ margin-bottom:0; }
+.upcoming-day-label{ font-size:12px; font-weight:700; color:var(--ink-soft); margin-bottom:6px; text-transform:uppercase; letter-spacing:.03em; }
+
+.modal-overlay{ position:fixed; inset:0; background:rgba(18,24,31,0.45); backdrop-filter:blur(2px); display:flex; align-items:flex-start; justify-content:center; padding:5vh 16px; z-index:100; overflow-y:auto; }
+.modal{ background:var(--surface); border-radius:14px; width:100%; max-width:560px; padding:22px; box-shadow:0 20px 50px rgba(0,0,0,0.2); }
+.modal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.modal-title{ font-family:var(--font-display); font-weight:700; font-size:17px; }
+.field{ margin-bottom:12px; }
+.field label{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:5px; }
+.field input[type=text], .field input[type=date], .field select, .field textarea{ width:100%; border:1px solid var(--border); border-radius:8px; padding:9px 10px; font-size:13.5px; background:var(--surface); }
+.field input:disabled, .field select:disabled, .field textarea:disabled{ background:var(--surface-alt); color:var(--ink-soft); }
+.field textarea{ resize:vertical; min-height:60px; }
+.field-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.priority-preview{ margin-top:7px; font-size:12px; color:var(--ink-soft); display:flex; align-items:center; gap:7px; }
+.notes-list{ display:flex; flex-direction:column; gap:8px; max-height:140px; overflow-y:auto; margin-bottom:8px; }
+.note-item{ background:var(--surface-alt); border-radius:8px; padding:8px 10px; font-size:12.5px; }
+.note-date{ color:var(--ink-faint); font-family:var(--font-mono); font-size:11px; margin-bottom:2px; }
+.modal-footer{ display:flex; justify-content:space-between; align-items:center; margin-top:18px; gap:10px; }
+.modal-footer-right{ display:flex; gap:8px; }
+
+.toast{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:8px; font-size:13px; z-index:200; opacity:0; pointer-events:none; transition:opacity .2s ease; }
+.toast.show{ opacity:1; }
+
+.loading-view{ padding:80px 0; text-align:center; color:var(--ink-soft); font-size:14px; }
+
+@media (max-width:640px){
+  .field-row{ grid-template-columns:1fr; }
+  .bar-label{ width:80px; }
+  .task-card{ align-items:flex-start; }
+  .calendar-cell{ min-height:64px; padding:4px; }
+  .cal-chip{ font-size:9.5px; }
+  .calendar-date{ font-size:10px; }
+  .calendar-month-label{ min-width:0; }
+}
+
+</style>
 </head>
-<body>
-
-<!-- LOGIN SCREEN (this link only ever signs in Employees) -->
-<div class="login-shell" id="loginScreen">
-  <div class="login-card">
-    <div class="login-mark">
-      <span class="dot"></span>
-      <span class="word">Invisel<small>Employee Sign-in</small></span>
-    </div>
-    <h1>Sign in</h1>
-    <p class="login-sub">Select your name and enter your 4-digit PIN.</p>
-    <div class="login-error" id="loginError"></div>
-    <div class="field">
-      <label for="nameSelect">Name</label>
-      <select id="nameSelect"><option value="">Loading names…</option></select>
-    </div>
-    <div class="field">
-      <label for="pinInput">PIN</label>
-      <input type="password" id="pinInput" inputmode="numeric" maxlength="4" placeholder="••••">
-    </div>
-    <button class="btn btn-primary" id="loginBtn">Sign in</button>
-  </div>
-</div>
-
-<!-- APP -->
-<div class="app-shell" id="appShell" style="display:none;">
-  <aside class="sidebar">
-    <div class="sidebar-mark">
-      <span class="dot"></span>
-      <span class="word">Invisel<small>Task Tracker</small></span>
-    </div>
-    <nav class="sidebar-nav">
-      <button class="nav-btn active" data-view="tasks"><span class="ic">☰</span> My Tasks</button>
-      <button class="nav-btn" data-view="calendar"><span class="ic">▦</span> Calendar</button>
-      <button class="nav-btn" data-view="log"><span class="ic">✓</span> Completed Log</button>
-    </nav>
-    <div class="sidebar-footer">
-      <div class="sidebar-user">
-        <div class="avatar" id="avatarInitial">?</div>
-        <div class="who">
-          <div class="name" id="userName">—</div>
-          <div class="role">Employee</div>
+<body data-role="employee">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <div>
+          <div class="brand-name">Invisel</div>
+          <div class="brand-sub">Task &amp; Deadline Tracker</div>
         </div>
       </div>
-      <button class="btn btn-ghost btn-sm" id="logoutBtn">Sign out</button>
-    </div>
-  </aside>
-
-  <main class="main">
-    <div class="topbar">
-      <div>
-        <h1 id="pageTitle">My Tasks</h1>
-        <div class="sub" id="pageSub">Everything assigned to you, sorted by what needs attention first.</div>
+      <div class="topbar-right">
+        <div class="sync-status"><span class="dot-status" id="sync-dot"></span><span id="sync-text">Connecting…</span><button class="btn btn-ghost btn-sm" data-action="refresh" type="button">↻</button></div>
+        <span id="logout-slot"></span>
+        <nav class="role-switch" aria-label="Switch view">
+          <a class="role-tab" data-role="admin" href="admin.html">Admin</a>
+          <a class="role-tab" data-role="manager" href="manager.html">Manager</a>
+          <a class="role-tab" data-role="employee" href="employee.html">Employee</a>
+        </nav>
       </div>
     </div>
-
-    <div class="stat-row">
-      <div class="stat-card accent-rust"><div class="num" id="statOverdue">0</div><div class="label">Overdue</div></div>
-      <div class="stat-card accent-amber"><div class="num" id="statSoon">0</div><div class="label">Due in 3 days</div></div>
-      <div class="stat-card accent-teal"><div class="num" id="statProgress">0</div><div class="label">In progress</div></div>
-      <div class="stat-card accent-green"><div class="num" id="statDone">0</div><div class="label">Completed</div></div>
-    </div>
-
-    <section id="view-tasks">
-      <div class="panel">
-        <div class="panel-head">
-          <div><h2>Assigned to me</h2><div class="sub" id="taskCount">—</div></div>
-          <div class="filters">
-            <select id="filterStatus">
-              <option value="">All statuses</option>
-              <option>Not Started</option><option>In Progress</option><option>Completed</option><option>Blocked</option>
-            </select>
-            <select id="filterPriority">
-              <option value="">All priorities</option>
-              <option>High</option><option>Medium</option><option>Low</option>
-            </select>
-            <select id="sortBy">
-              <option value="urgency">Sort: Urgency</option>
-              <option value="deadline">Sort: Deadline</option>
-              <option value="priority">Sort: Priority</option>
-            </select>
-          </div>
-        </div>
-        <div class="panel-body"><div id="taskList"></div></div>
-      </div>
-    </section>
-
-    <section id="view-calendar" style="display:none;">
-      <div class="panel">
-        <div class="panel-head"><div><h2>My calendar</h2><div class="sub">Tasks plotted on their deadline (end date).</div></div></div>
-        <div class="panel-body"><div id="calendarEl"></div></div>
-      </div>
-      <div class="panel">
-        <div class="panel-head">
-          <div><h2>Completed in <span id="calLogMonthLabel">this month</span></h2><div class="sub" id="calLogCount">—</div></div>
-        </div>
-        <div class="panel-body"><div id="calLogList"></div></div>
-      </div>
-    </section>
-
-    <section id="view-log" style="display:none;">
-      <div class="panel">
-        <div class="panel-head">
-          <div><h2>Completed log</h2><div class="sub">Everything you've finished, month by month.</div></div>
-          <div class="filters">
-            <select id="logMonth"></select>
-          </div>
-        </div>
-        <div class="panel-body">
-          <div class="log-summary">
-            <span class="big" id="logCount">0</span>
-            <span class="txt">completed in this period</span>
-          </div>
-          <div id="logList"></div>
-        </div>
-      </div>
-    </section>
+    <div class="sheen"></div>
+  </header>
+  <main>
+    <div id="banner" class="banner" style="display:none;"></div>
+    <div id="view"><div class="loading-view">Loading tasks…</div></div>
   </main>
-</div>
+  <div id="modal-root"></div>
+  <div id="toast" class="toast"></div>
 
-<!-- TASK DETAIL / UPDATE MODAL (employee: status + progress only) -->
-<div class="modal-backdrop" id="taskModalBackdrop">
-  <div class="modal">
-    <div class="modal-head">
-      <h2 id="modalTaskTitle">Task</h2>
-      <button class="modal-close" id="modalClose">&times;</button>
-    </div>
-    <div class="modal-body">
-      <div class="readonly-note">You can update your status and progress here. Only your manager or admin can edit task details, dates, or priority.</div>
-      <div class="field"><label>Description</label><div id="modalDescription" style="font-size:13.5px; color:var(--muted);">—</div></div>
-      <div class="form-row">
-        <div class="field"><label>Assigned by</label><div id="modalAssignedBy" style="padding-top:2px; font-size:13.5px;">—</div></div>
-        <div class="field"><label>Priority</label><div id="modalPriority" style="padding-top:2px; font-size:13.5px;">—</div></div>
-      </div>
-      <div class="form-row">
-        <div class="field"><label>Start date</label><div id="modalStart" style="padding-top:2px; font-size:13.5px;">—</div></div>
-        <div class="field"><label>Deadline</label><div id="modalEnd" style="padding-top:2px; font-size:13.5px;">—</div></div>
-      </div>
-      <div class="field">
-        <label for="statusSelect">Status</label>
-        <select id="statusSelect"><option>Not Started</option><option>In Progress</option><option>Completed</option><option>Blocked</option></select>
-      </div>
-      <div class="field">
-        <label for="progressPercent">Progress (%)</label>
-        <input type="range" id="progressPercent" min="0" max="100" step="5">
-        <div style="text-align:right; font-size:12.5px; color:var(--muted);" id="progressPercentLabel">0%</div>
-      </div>
-      <div class="field">
-        <label for="progressNotes">Progress notes</label>
-        <textarea id="progressNotes" rows="3" placeholder="What's the latest on this task?"></textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" id="cancelUpdate">Cancel</button>
-      <button class="btn btn-teal" id="saveUpdate">Save progress</button>
-    </div>
-  </div>
-</div>
+  <script>
+var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV5zgH9ofqeHyG4gGR65zT6jnHEQSTlL_4WDejNvubDW/exec";
+(function(){
+  "use strict";
 
-<script src="config.js"></script>
-<script src="api.js"></script>
-<script>
-let session = null;
-let allTasks = [];
-let activeTaskId = null;
-let calYear, calMonth;
+  var ROLE = document.body.getAttribute("data-role"); // "admin" | "manager" | "employee"
 
-initGatedLogin('Employee', (s) => { session = s; boot(); });
+  var CATEGORIES = ["Marketing","Finance","E-commerce","Brand","R&D","Operations","Other"];
+  var PRIORITIES = ["High","Medium","Low"];
+  var STATUSES = ["Not Started","In Progress","Completed","Blocked"];
 
-function boot() {
-  document.getElementById('userName').textContent = session.name;
-  document.getElementById('avatarInitial').textContent = session.name.charAt(0).toUpperCase();
-  const today = new Date();
-  calYear = today.getFullYear();
-  calMonth = today.getMonth();
-  loadTasks();
-}
+  // Deadline → priority thresholds, measured from the END date. Priority is DERIVED, never set by hand.
+  var PRIORITY_RULES = { highWithinDays: 2, mediumWithinDays: 7 };
+  var UPCOMING_DAYS = 14;
+  var POLL_MS = 20000;
 
-document.getElementById('logoutBtn').addEventListener('click', () => { clearSession(); window.location.reload(); });
+  // Admin PIN — change this before sharing the file. This is a UX gate, not
+  // real security: this is a static site with a publicly-readable backend,
+  // so treat it as "keeps casual visitors out," not "cryptographically safe."
+  var ADMIN_PIN = "4242";
 
-document.querySelectorAll('.nav-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const view = btn.getAttribute('data-view');
-    document.getElementById('view-tasks').style.display = view === 'tasks' ? '' : 'none';
-    document.getElementById('view-calendar').style.display = view === 'calendar' ? '' : 'none';
-    document.getElementById('view-log').style.display = view === 'log' ? '' : 'none';
-    const titles = { tasks: 'My Tasks', calendar: 'My Calendar', log: 'Completed Log' };
-    const subs = {
-      tasks: 'Everything assigned to you, sorted by what needs attention first.',
-      calendar: 'Tasks plotted on their deadline.',
-      log: "Everything you've finished, month by month."
+  var today = new Date(); today.setHours(0,0,0,0);
+
+  function lsGet(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } }
+  function lsSet(key, val){ try{ localStorage.setItem(key, val); }catch(e){} }
+  function lsRemove(key){ try{ localStorage.removeItem(key); }catch(e){} }
+  function randomPin(){ return String(Math.floor(1000 + Math.random()*9000)); }
+
+  var state = {
+    employeeViewer: null,
+    managerViewer: null,
+    tasks: [],
+    team: [],
+    filters: { assignee: "all", priority: "all", status: "all", category: "all" },
+    modal: null,
+    loading: true,
+    loggedIn: false,
+    loginError: null,
+    viewMode: "list", // "list" | "calendar"
+    calendar: { year: today.getFullYear(), month: today.getMonth(), selectedDay: null },
+    monthReview: { year: today.getFullYear(), month: today.getMonth() }
+  };
+
+  // ---------- utils ----------
+  function uid(prefix){ return prefix + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function escapeHtml(str){
+    return String(str == null ? "" : str).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+  function todayDate(){ var d = new Date(); d.setHours(0,0,0,0); return d; }
+  function toISO(d){ return d.toISOString().slice(0,10); }
+  function addDays(d, n){ var r = new Date(d); r.setDate(r.getDate()+n); return r; }
+  function todayISO(){ return toISO(todayDate()); }
+  function daysBetween(isoDate){
+    var d = new Date(isoDate + "T00:00:00");
+    var t = todayDate();
+    return Math.round((d - t) / 86400000);
+  }
+  function formatDate(iso){
+    if(!iso) return "—";
+    var d = new Date(iso + "T00:00:00");
+    return d.toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" });
+  }
+  function isOverdue(t){ return t.status !== "Completed" && daysBetween(t.endDate) < 0; }
+  function isDueSoon(t){ var db = daysBetween(t.endDate); return t.status !== "Completed" && db >= 0 && db <= 2; }
+
+  // ---------- priority engine: derived from end date + status, never stored/edited directly ----------
+  function computePriority(t){
+    if(!t || !t.endDate) return null;
+    if(t.status === "Completed") return null;
+    var d = daysBetween(t.endDate);
+    if(d < 0) return "High";
+    if(d <= PRIORITY_RULES.highWithinDays) return "High";
+    if(d <= PRIORITY_RULES.mediumWithinDays) return "Medium";
+    return "Low";
+  }
+  function priorityRank(p){ return p === "High" ? 0 : p === "Medium" ? 1 : p === "Low" ? 2 : 3; }
+  function priorityClass(p){ return p ? "badge-" + p.toLowerCase() : ""; }
+  function statusClass(s){
+    if(s === "Completed") return "st-completed";
+    if(s === "Blocked") return "st-blocked";
+    if(s === "In Progress") return "st-progress";
+    return "";
+  }
+
+  function getMember(id){ return state.team.find(function(m){ return m.id === id; }); }
+  function memberName(id){ var m = getMember(id); return m ? m.name : "Unassigned"; }
+  function isManagerId(id){ var m = getMember(id); return !!(m && m.isManager); }
+  function managers(){ return state.team.filter(function(m){ return m.isManager; }); }
+  function reporteesOf(managerId){ return state.team.filter(function(m){ return !m.isManager && m.managerId === managerId; }); }
+  function assignedByLabel(t){
+    if(!t.assignedBy) return null;
+    if(t.assignedBy.type === "admin") return "Admin";
+    if(t.assignedBy.type === "manager") return memberName(t.assignedBy.id);
+    return null;
+  }
+  function assignableMembers(){
+    if(ROLE === "manager") return reporteesOf(state.managerViewer);
+    return state.team;
+  }
+  function showToast(msg){
+    var el = document.getElementById("toast");
+    if(!el) return;
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(function(){ el.classList.remove("show"); }, 2600);
+  }
+
+  // ---------- seed data (local demo mode only) ----------
+  function seedTeam(){
+    return [
+      { id:"mgr1", name:"Manager 1", isManager:true, managerId:null, pin:"1111" },
+      { id:"mgr2", name:"Manager 2", isManager:true, managerId:null, pin:"2222" },
+      { id:"tm1", name:"Team Member 1", isManager:false, managerId:"mgr1", pin:"1001" },
+      { id:"tm2", name:"Team Member 2", isManager:false, managerId:"mgr1", pin:"1002" },
+      { id:"tm3", name:"Team Member 3", isManager:false, managerId:"mgr2", pin:"1003" }
+    ];
+  }
+  function seedTasks(){
+    var t = todayDate();
+    var byMgr1 = { type:"manager", id:"mgr1" };
+    var byMgr2 = { type:"manager", id:"mgr2" };
+    var byAdmin = { type:"admin", id:null };
+    return [
+      { id:uid("t"), title:"Amazon listing copy refresh — 7 SKUs", description:"Update titles, bullets and A+ copy for all live SKUs.", assigneeId:"tm1", category:"Marketing", status:"In Progress", startDate:toISO(addDays(t,-1)), endDate:toISO(addDays(t,2)), createdDate:todayISO(), completedDate:null, notes:[], assignedBy:byMgr1 },
+      { id:uid("t"), title:"August MIS — CM1/CM2/CM3 update", description:"Roll up daily actuals into the monthly income statement.", assigneeId:"tm2", category:"Finance", status:"Not Started", startDate:toISO(addDays(t,1)), endDate:toISO(addDays(t,5)), createdDate:todayISO(), completedDate:null, notes:[], assignedBy:byMgr1 },
+      { id:uid("t"), title:"Restock check — Gokwik channel", description:"Confirm live inventory vs modeled stock before next ad push.", assigneeId:"tm1", category:"E-commerce", status:"Not Started", startDate:toISO(addDays(t,-4)), endDate:toISO(addDays(t,-2)), createdDate:todayISO(), completedDate:null, notes:[], assignedBy:byMgr1 },
+      { id:uid("t"), title:"Brand guideline PDF — finalize typography", description:"Lock Helvetica/Poppins usage rules before logo files ship.", assigneeId:"tm3", category:"Brand", status:"Completed", startDate:toISO(addDays(t,-8)), endDate:toISO(addDays(t,-6)), createdDate:todayISO(), completedDate:toISO(addDays(t,-1)), notes:[], assignedBy:byMgr2 },
+      { id:uid("t"), title:"Sol-gel coating vendor shortlist", description:"Compare Indian suppliers for deposition equipment.", assigneeId:"tm3", category:"R&D", status:"In Progress", startDate:toISO(addDays(t,2)), endDate:toISO(addDays(t,12)), createdDate:todayISO(), completedDate:null, notes:[], assignedBy:byMgr2 },
+      { id:uid("t"), title:"PSI subsidy application docs", description:"Compile documents for Maharashtra PSI capex subsidy filing.", assigneeId:"tm2", category:"Operations", status:"Blocked", startDate:toISO(addDays(t,-5)), endDate:toISO(addDays(t,-1)), createdDate:todayISO(), completedDate:null, notes:[{ text:"Waiting on CA for signed financials.", date:todayISO() }], assignedBy:byAdmin },
+      { id:uid("t"), title:"Meta ad creative — cleaning bundle", description:"New creative set for the bundle launch push.", assigneeId:"tm1", category:"Marketing", status:"Not Started", startDate:toISO(addDays(t,1)), endDate:toISO(addDays(t,3)), createdDate:todayISO(), completedDate:null, notes:[], assignedBy:byMgr1 }
+    ];
+  }
+
+  // ---------- migration: tolerate older data shapes from the Sheet ----------
+  function normalizeTeam(team){
+    return (team || []).map(function(m){
+      var isMgr = !!m.isManager;
+      return { id: m.id, name: m.name, isManager: isMgr, managerId: isMgr ? null : (m.managerId || null), pin: m.pin || "0000" };
+    });
+  }
+  function normalizeTasks(tasks){
+    return (tasks || []).map(function(t){
+      var end = t.endDate || t.dueDate || todayISO();
+      var start = t.startDate || t.dueDate || end;
+      if(start > end) start = end;
+      return {
+        id: t.id,
+        title: t.title,
+        description: t.description || "",
+        assigneeId: t.assigneeId || null,
+        category: t.category || "Other",
+        status: t.status || "Not Started",
+        startDate: start,
+        endDate: end,
+        createdDate: t.createdDate || todayISO(),
+        completedDate: t.completedDate || null,
+        notes: t.notes || [],
+        assignedBy: t.assignedBy || null
+      };
+    });
+  }
+
+  // ---------- backend (Google Apps Script + Sheet) ----------
+  function isApiConfigured(){
+    return typeof API_URL === "string" && API_URL.indexOf("http") === 0;
+  }
+  function apiFetchState(){
+    return fetch(API_URL, { method:"GET" }).then(function(r){
+      if(!r.ok) throw new Error("bad status " + r.status);
+      return r.json();
+    });
+  }
+  function apiSaveState(payload){
+    return fetch(API_URL, { method:"POST", body: JSON.stringify(payload) }).then(function(r){
+      if(!r.ok) throw new Error("bad status " + r.status);
+      return r.json();
+    });
+  }
+  function setSyncStatus(mode, text){
+    var dot = document.getElementById("sync-dot");
+    var label = document.getElementById("sync-text");
+    if(!dot || !label) return;
+    dot.className = "dot-status" + (mode ? " dot-" + mode : "");
+    label.textContent = text;
+  }
+
+  function loadData(){
+    if(!isApiConfigured()){
+      showBanner("Running in local demo mode — changes here won't be saved. Check <code>config.js</code>.", false);
+      setSyncStatus("warn", "Local demo mode");
+      state.team = normalizeTeam(seedTeam());
+      state.tasks = normalizeTasks(seedTasks());
+      afterLoad();
+      return;
+    }
+    setSyncStatus("", "Connecting…");
+    apiFetchState().then(function(data){
+      var hasTeam = data && data.team && data.team.length;
+      var hasTasks = data && data.tasks && data.tasks.length;
+      state.team = normalizeTeam(hasTeam ? data.team : seedTeam());
+      state.tasks = normalizeTasks(hasTasks ? data.tasks : seedTasks());
+      setSyncStatus("ok", "Backend connected");
+      afterLoad();
+      if(!hasTeam || !hasTasks){
+        apiSaveState({ tasks: state.tasks, team: state.team });
+      }
+    }).catch(function(){
+      showBanner("Couldn't reach the backend. Check that the Apps Script is deployed with access set to \"Anyone\". Showing local sample data for now.", true);
+      setSyncStatus("off", "Offline");
+      state.team = normalizeTeam(seedTeam());
+      state.tasks = normalizeTasks(seedTasks());
+      afterLoad();
+    });
+  }
+
+  function restoreSession(){
+    if(ROLE === "admin"){
+      if(lsGet("invisel_admin_ok") === "1") state.loggedIn = true;
+      return;
+    }
+    if(ROLE === "manager"){
+      var savedMgr = lsGet("invisel_manager_id");
+      if(savedMgr && isManagerId(savedMgr)){ state.managerViewer = savedMgr; state.loggedIn = true; }
+      return;
+    }
+    var savedEmp = lsGet("invisel_employee_id");
+    var mem = savedEmp ? getMember(savedEmp) : null;
+    if(mem && !mem.isManager){ state.employeeViewer = savedEmp; state.loggedIn = true; }
+  }
+
+  function afterLoad(){
+    state.loading = false;
+    restoreSession();
+    render();
+    startPolling();
+  }
+
+  function startPolling(){
+    if(!isApiConfigured()) return;
+    setInterval(function(){
+      if(state.modal) return;
+      apiFetchState().then(function(data){
+        var newTasks = normalizeTasks(data.tasks || []);
+        var newTeam = normalizeTeam(data.team || []);
+        if(JSON.stringify(newTasks) !== JSON.stringify(state.tasks) || JSON.stringify(newTeam) !== JSON.stringify(state.team)){
+          state.tasks = newTasks;
+          state.team = newTeam;
+          if(ROLE === "employee" && state.employeeViewer && !getMember(state.employeeViewer)){
+            handleLogout();
+            return;
+          }
+          if(ROLE === "manager" && state.managerViewer && !isManagerId(state.managerViewer)){
+            handleLogout();
+            return;
+          }
+          setSyncStatus("ok", "Backend connected");
+          render();
+        }
+      }).catch(function(){ setSyncStatus("off", "Offline — retrying"); });
+    }, POLL_MS);
+  }
+
+  function persist(){
+    if(!isApiConfigured()){
+      showToast("Local demo mode — this change won't be saved.");
+      return;
+    }
+    setSyncStatus("", "Syncing…");
+    apiSaveState({ tasks: state.tasks, team: state.team }).then(function(data){
+      if(data && data.tasks) state.tasks = normalizeTasks(data.tasks);
+      if(data && data.team) state.team = normalizeTeam(data.team);
+      setSyncStatus("ok", "Backend connected");
+      render();
+    }).catch(function(){
+      setSyncStatus("off", "Couldn't save — offline");
+      showToast("Couldn't save — check your connection.");
+    });
+  }
+
+  function manualRefresh(){
+    if(!isApiConfigured()){ showToast("Local demo mode — nothing to refresh."); return; }
+    setSyncStatus("", "Refreshing…");
+    apiFetchState().then(function(data){
+      state.tasks = normalizeTasks(data.tasks || []);
+      state.team = normalizeTeam(data.team || []);
+      setSyncStatus("ok", "Backend connected");
+      render();
+      showToast("Up to date.");
+    }).catch(function(){ setSyncStatus("off", "Offline"); showToast("Couldn't refresh."); });
+  }
+
+  // ---------- computed ----------
+  function statsFor(tasks){
+    var overdue = tasks.filter(isOverdue).length;
+    var dueSoon = tasks.filter(isDueSoon).length;
+    var weekAgo = toISO(addDays(todayDate(), -7));
+    var completedWeek = tasks.filter(function(t){ return t.status === "Completed" && t.completedDate && t.completedDate >= weekAgo; }).length;
+    var completedTotal = tasks.filter(function(t){ return t.status === "Completed"; }).length;
+    return { total: tasks.length, overdue: overdue, dueSoon: dueSoon, completedWeek: completedWeek, completedTotal: completedTotal };
+  }
+  function categoryBreakdown(tasks){
+    var counts = {};
+    tasks.forEach(function(t){ counts[t.category] = (counts[t.category]||0) + 1; });
+    return counts;
+  }
+  function priorityBreakdown(tasks){
+    var counts = { High:0, Medium:0, Low:0 };
+    var active = tasks.filter(function(t){ return t.status !== "Completed"; });
+    active.forEach(function(t){ var p = computePriority(t); if(p) counts[p]++; });
+    return { counts: counts, total: active.length };
+  }
+  function sortTasks(tasks){
+    return tasks.slice().sort(function(a,b){
+      var ao = isOverdue(a) ? 0 : 1, bo = isOverdue(b) ? 0 : 1;
+      if(ao !== bo) return ao - bo;
+      var pr = priorityRank(computePriority(a)) - priorityRank(computePriority(b));
+      if(pr !== 0) return pr;
+      return a.endDate < b.endDate ? -1 : a.endDate > b.endDate ? 1 : 0;
+    });
+  }
+  function applyFilters(tasks){
+    var f = state.filters;
+    return tasks.filter(function(t){
+      if(f.assignee !== "all" && t.assigneeId !== f.assignee) return false;
+      if(f.priority !== "all" && computePriority(t) !== f.priority) return false;
+      if(f.status !== "all" && t.status !== f.status) return false;
+      if(f.category !== "all" && t.category !== f.category) return false;
+      return true;
+    });
+  }
+  function tasksOnDay(tasks, iso){
+    return tasks.filter(function(t){ return t.startDate <= iso && iso <= t.endDate; });
+  }
+
+  // ---------- templates ----------
+  function statCard(label, value, tone){
+    return '<div class="stat-card' + (tone ? ' ' + tone : '') + '"><div class="stat-value">' + value + '</div><div class="stat-label">' + escapeHtml(label) + '</div></div>';
+  }
+  function priorityBadge(p){
+    if(!p) return '<span class="section-hint">Done</span>';
+    return '<span class="badge ' + priorityClass(p) + '"><span class="badge-dot"></span>' + p + '</span>';
+  }
+  function dueLabel(t){
+    var db = daysBetween(t.endDate);
+    var cls = "due-label";
+    var text = formatDate(t.endDate);
+    if(t.status !== "Completed"){
+      if(db < 0){ cls += " due-overdue"; text += " · " + Math.abs(db) + "d overdue"; }
+      else if(db <= 2){ cls += " due-soon"; text += db === 0 ? " · today" : (" · in " + db + "d"); }
+    }
+    return '<span class="' + cls + '">' + text + '</span>';
+  }
+  function taskCard(t, opts){
+    opts = opts || {};
+    var statusOptions = STATUSES.map(function(s){
+      return '<option value="' + s + '"' + (s === t.status ? " selected" : "") + '>' + s + '</option>';
+    }).join("");
+    var metaBits = [];
+    if(opts.showAssignedBy){
+      var label = assignedByLabel(t);
+      if(label) metaBits.push("Assigned by " + label);
+    } else if(!opts.hideAssignee){
+      metaBits.push(memberName(t.assigneeId));
+    }
+    metaBits.push(t.category);
+    return '' +
+      '<div class="task-card" data-action="open-task" data-id="' + t.id + '">' +
+        '<div class="task-main">' +
+          '<p class="task-title">' + escapeHtml(t.title) + '</p>' +
+          '<div class="task-meta">' + metaBits.map(function(m){ return '<span>' + escapeHtml(m) + '</span>'; }).join('<span>·</span>') + '</div>' +
+        '</div>' +
+        priorityBadge(computePriority(t)) +
+        dueLabel(t) +
+        '<select class="quick-status" data-action="quick-status" data-id="' + t.id + '" onclick="event.stopPropagation()">' + statusOptions + '</select>' +
+      '</div>';
+  }
+  function emptyState(title, sub){
+    return '<div class="empty-state"><strong>' + escapeHtml(title) + '</strong>' + escapeHtml(sub) + '</div>';
+  }
+  function filterBar(includeAssignee, teamSubset){
+    var list = teamSubset || state.team;
+    var assigneeOpts = '<option value="all">All people</option>' + list.map(function(m){
+      return '<option value="' + m.id + '"' + (state.filters.assignee === m.id ? " selected" : "") + '>' + escapeHtml(m.name) + '</option>';
+    }).join("");
+    var priorityOpts = '<option value="all">All priorities</option>' + PRIORITIES.map(function(p){
+      return '<option value="' + p + '"' + (state.filters.priority === p ? " selected" : "") + '>' + p + '</option>';
+    }).join("");
+    var statusOpts = '<option value="all">All statuses</option>' + STATUSES.map(function(s){
+      return '<option value="' + s + '"' + (state.filters.status === s ? " selected" : "") + '>' + s + '</option>';
+    }).join("");
+    var catOpts = '<option value="all">All categories</option>' + CATEGORIES.map(function(c){
+      return '<option value="' + c + '"' + (state.filters.category === c ? " selected" : "") + '>' + c + '</option>';
+    }).join("");
+    return '<div class="filter-bar">' +
+      (includeAssignee ? '<select data-filter="assignee">' + assigneeOpts + '</select>' : '') +
+      '<select data-filter="priority">' + priorityOpts + '</select>' +
+      '<select data-filter="status">' + statusOpts + '</select>' +
+      '<select data-filter="category">' + catOpts + '</select>' +
+      '</div>';
+  }
+  function viewToggle(){
+    return '<div class="role-switch view-toggle">' +
+      '<button class="role-tab" data-action="set-view" data-mode="list" aria-selected="' + (state.viewMode === "list") + '" type="button">List</button>' +
+      '<button class="role-tab" data-action="set-view" data-mode="calendar" aria-selected="' + (state.viewMode === "calendar") + '" type="button">Calendar</button>' +
+      '</div>';
+  }
+  function priorityBreakdownBars(tasks){
+    var b = priorityBreakdown(tasks);
+    var max = Math.max(1, b.total);
+    return PRIORITIES.map(function(p){
+      var c = b.counts[p] || 0;
+      var color = p === "High" ? "var(--high)" : p === "Medium" ? "var(--medium)" : "var(--low)";
+      return '<div class="bar-row"><span class="bar-label">' + p + '</span><div class="bar-track"><div class="bar-fill" style="width:' + (c/max*100) + '%;background:' + color + '"></div></div><span class="bar-count">' + c + '</span></div>';
+    }).join("") + '<p class="section-hint" style="margin:2px 0 0;">Priority is set automatically from each task\u2019s end date — not chosen by hand.</p>';
+  }
+  function categoryBreakdownBars(tasks){
+    var counts = categoryBreakdown(tasks);
+    var max = Math.max(1, tasks.length);
+    return CATEGORIES.filter(function(c){ return counts[c]; }).map(function(c){
+      var n = counts[c] || 0;
+      return '<div class="bar-row"><span class="bar-label">' + c + '</span><div class="bar-track"><div class="bar-fill" style="width:' + (n/max*100) + '%;background:var(--accent)"></div></div><span class="bar-count">' + n + '</span></div>';
+    }).join("") || '<p class="section-hint">No tasks yet.</p>';
+  }
+  function workloadTable(members, tasksList){
+    members = members || state.team;
+    tasksList = tasksList || state.tasks;
+    if(!members.length) return '<p class="section-hint">No team members yet.</p>';
+    var rows = members.map(function(m){
+      var mine = tasksList.filter(function(t){ return t.assigneeId === m.id; });
+      var completed = mine.filter(function(t){ return t.status === "Completed"; }).length;
+      var overdue = mine.filter(isOverdue).length;
+      var rate = mine.length ? Math.round(completed / mine.length * 100) : 0;
+      return '<tr><td>' + escapeHtml(m.name) + '</td><td>' + mine.length + '</td><td>' + completed + '</td><td' + (overdue ? ' style="color:var(--high);font-weight:600;"' : '') + '>' + overdue + '</td><td>' + rate + '%</td></tr>';
+    }).join("");
+    return '<table class="workload"><thead><tr><th>Name</th><th>Assigned</th><th>Completed</th><th>Overdue</th><th>Completion</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+  function monthRangeIso(y, m){ return [isoFor(y, m, 1), isoFor(y, m + 1, 0)]; }
+  function tasksInMonth(tasks, y, m){
+    var range = monthRangeIso(y, m);
+    return tasks.filter(function(t){ return t.endDate >= range[0] && t.endDate <= range[1]; });
+  }
+  function monthlyStats(tasks, y, m){
+    var inMonth = tasksInMonth(tasks, y, m);
+    var completed = inMonth.filter(function(t){ return t.status === "Completed"; });
+    var onTime = completed.filter(function(t){ return t.completedDate && t.completedDate <= t.endDate; });
+    return {
+      total: inMonth.length,
+      completed: completed.length,
+      completionRate: inMonth.length ? Math.round(completed.length / inMonth.length * 100) : 0,
+      onTimeRate: completed.length ? Math.round(onTime.length / completed.length * 100) : 0
     };
-    document.getElementById('pageTitle').textContent = titles[view];
-    document.getElementById('pageSub').textContent = subs[view];
-    if (view === 'calendar') drawCalendar();
-    if (view === 'log') drawLog();
-    fadeInView(document.getElementById('view-' + view));
-  });
-});
-
-async function loadTasks() {
-  try {
-    const data = await apiCall('getTasks', { role: 'Employee', name: session.name });
-    allTasks = data.tasks;
-    renderStats();
-    renderTaskList();
-  } catch (err) {
-    showToast(err.message, true);
   }
-}
-
-function renderStats() {
-  const overdue = allTasks.filter(t => t.status !== 'Completed' && daysUntil(t.endDate) < 0).length;
-  const soon = allTasks.filter(t => t.status !== 'Completed' && daysUntil(t.endDate) >= 0 && daysUntil(t.endDate) <= 3).length;
-  const inProgress = allTasks.filter(t => t.status === 'In Progress').length;
-  const done = allTasks.filter(t => t.status === 'Completed').length;
-  document.getElementById('statOverdue').textContent = overdue;
-  document.getElementById('statSoon').textContent = soon;
-  document.getElementById('statProgress').textContent = inProgress;
-  document.getElementById('statDone').textContent = done;
-}
-
-function getFilteredSorted() {
-  const status = document.getElementById('filterStatus').value;
-  const priority = document.getElementById('filterPriority').value;
-  const sortBy = document.getElementById('sortBy').value;
-  let list = allTasks.filter(t => (!status || t.status === status) && (!priority || t.priority === priority));
-  const urgencyRank = { overdue: 0, high: 1, medium: 2, low: 3, done: 4 };
-  const priorityRank = { High: 0, Medium: 1, Low: 2 };
-  if (sortBy === 'urgency') {
-    list.sort((a, b) => urgencyRank[urgencyFor(a).tone] - urgencyRank[urgencyFor(b).tone] || daysUntil(a.endDate) - daysUntil(b.endDate));
-  } else if (sortBy === 'deadline') {
-    list.sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
-  } else if (sortBy === 'priority') {
-    list.sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority]);
+  function monthNavHead(){
+    var y = state.monthReview.year, m = state.monthReview.month;
+    var label = new Date(y, m, 1).toLocaleDateString("en-IN", { month:"long", year:"numeric" });
+    var isCurrent = (y === today.getFullYear() && m === today.getMonth());
+    return '<div class="calendar-head">' +
+      '<button class="btn btn-ghost btn-sm" data-action="month-prev" type="button">‹</button>' +
+      '<span class="calendar-month-label">' + label + (isCurrent ? " (MTD)" : "") + '</span>' +
+      '<button class="btn btn-ghost btn-sm" data-action="month-next" type="button">›</button>' +
+      '<button class="btn btn-ghost btn-sm" data-action="month-current" type="button">This month</button>' +
+      '</div>';
   }
-  return list;
-}
-
-function renderTaskList() {
-  const list = getFilteredSorted();
-  document.getElementById('taskCount').textContent = `${list.length} task${list.length === 1 ? '' : 's'}`;
-  const container = document.getElementById('taskList');
-  if (!list.length) {
-    container.innerHTML = `<div class="empty-state"><div class="ic">✓</div><div class="txt">No tasks match these filters. You're all caught up.</div></div>`;
-    return;
+  function monthlyPanel(tasks){
+    var y = state.monthReview.year, m = state.monthReview.month;
+    var s = monthlyStats(tasks, y, m);
+    return monthNavHead() +
+      '<div class="stat-grid">' +
+        statCard("Tasks due", s.total, "") +
+        statCard("Completed", s.completed, "ok") +
+        statCard("Completion rate", s.completionRate + "%", "") +
+        statCard("On-time rate", s.onTimeRate + "%", "") +
+      '</div>';
   }
-  container.innerHTML = list.map(t => {
-    const u = urgencyFor(t);
-    return `
-      <div class="task-row" data-id="${escapeHtml(t.taskId)}">
-        <div class="task-main">
-          <div class="title">${escapeHtml(t.title)}</div>
-          <div class="meta">From ${escapeHtml(t.assignedBy)} · ${escapeHtml(t.status)}</div>
-        </div>
-        <span class="badge tone-${u.tone}">${u.label}</span>
-        <span class="badge tone-${(t.priority || 'medium').toLowerCase()}">${escapeHtml(t.priority || 'Medium')}</span>
-        <div style="width:90px;"><div class="progress-bar"><span style="width:${t.progressPercent || 0}%"></span></div></div>
-        <div class="task-dates">Due ${formatDatePretty(t.endDate)}</div>
-      </div>
-    `;
-  }).join('');
-  container.querySelectorAll('.task-row').forEach(row => row.addEventListener('click', () => openTaskModal(row.getAttribute('data-id'))));
-}
+  function monthlyBreakdownTable(members, tasksList){
+    var y = state.monthReview.year, m = state.monthReview.month;
+    if(!members.length) return '<p class="section-hint">No one to show yet.</p>';
+    var rows = members.map(function(mem){
+      var mine = tasksList.filter(function(t){ return t.assigneeId === mem.id; });
+      var s = monthlyStats(mine, y, m);
+      return '<tr><td>' + escapeHtml(mem.name) + '</td><td>' + s.total + '</td><td>' + s.completed + '</td><td>' + s.completionRate + '%</td><td>' + s.onTimeRate + '%</td></tr>';
+    }).join("");
+    return '<table class="workload"><thead><tr><th>Name</th><th>Tasks due</th><th>Completed</th><th>Completion</th><th>On-time</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+  function showBanner(html, isError){
+    var el = document.getElementById("banner");
+    if(!el) return;
+    el.className = "banner" + (isError ? " banner-error" : "");
+    el.innerHTML = html;
+    el.style.display = "block";
+  }
 
-['filterStatus', 'filterPriority', 'sortBy'].forEach(id => document.getElementById(id).addEventListener('change', renderTaskList));
-
-function openTaskModal(taskId) {
-  const t = allTasks.find(x => x.taskId === taskId);
-  if (!t) return;
-  activeTaskId = taskId;
-  document.getElementById('modalTaskTitle').textContent = t.title;
-  document.getElementById('modalDescription').textContent = t.description || 'No description provided.';
-  document.getElementById('modalAssignedBy').textContent = t.assignedBy;
-  document.getElementById('modalPriority').textContent = t.priority;
-  document.getElementById('modalStart').textContent = formatDatePretty(t.startDate);
-  document.getElementById('modalEnd').textContent = formatDatePretty(t.endDate);
-  document.getElementById('statusSelect').value = t.status;
-  document.getElementById('progressPercent').value = t.progressPercent || 0;
-  document.getElementById('progressPercentLabel').textContent = (t.progressPercent || 0) + '%';
-  document.getElementById('progressNotes').value = t.progress || '';
-  document.getElementById('taskModalBackdrop').classList.add('show');
-}
-
-document.getElementById('progressPercent').addEventListener('input', e => {
-  document.getElementById('progressPercentLabel').textContent = e.target.value + '%';
-});
-
-function closeModal() { document.getElementById('taskModalBackdrop').classList.remove('show'); activeTaskId = null; }
-document.getElementById('modalClose').addEventListener('click', closeModal);
-document.getElementById('cancelUpdate').addEventListener('click', closeModal);
-document.getElementById('taskModalBackdrop').addEventListener('click', e => { if (e.target.id === 'taskModalBackdrop') closeModal(); });
-
-document.getElementById('saveUpdate').addEventListener('click', async () => {
-  const btn = document.getElementById('saveUpdate');
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
-  try {
-    await apiCall('updateTask', {
-      taskId: activeTaskId,
-      role: 'Employee',
-      name: session.name,
-      updates: {
-        status: document.getElementById('statusSelect').value,
-        progressPercent: Number(document.getElementById('progressPercent').value),
-        progress: document.getElementById('progressNotes').value
+  function upcomingPanel(tasks){
+    var order = [];
+    for(var i = 0; i < UPCOMING_DAYS; i++) order.push(toISO(addDays(todayDate(), i)));
+    var groups = {};
+    order.forEach(function(iso){ groups[iso] = []; });
+    tasks.forEach(function(t){
+      if(t.status === "Completed") return;
+      if(groups.hasOwnProperty(t.endDate)) groups[t.endDate].push(t);
+    });
+    var overdue = sortTasks(tasks.filter(isOverdue));
+    var html = "";
+    if(overdue.length){
+      html += '<div class="upcoming-day-group"><div class="upcoming-day-label" style="color:var(--high);">Overdue</div><div class="task-list">' + overdue.map(function(t){ return taskCard(t); }).join("") + '</div></div>';
+    }
+    var any = false;
+    order.forEach(function(iso){
+      var dayTasks = groups[iso];
+      if(dayTasks && dayTasks.length){
+        any = true;
+        var label = iso === todayISO() ? "Today" : formatDate(iso);
+        html += '<div class="upcoming-day-group"><div class="upcoming-day-label">' + label + '</div><div class="task-list">' + sortTasks(dayTasks).map(function(t){ return taskCard(t); }).join("") + '</div></div>';
       }
     });
-    showToast('Progress saved.');
+    if(!overdue.length && !any) html += '<p class="section-hint">Nothing overdue or due in the next ' + UPCOMING_DAYS + ' days.</p>';
+    return html;
+  }
+
+  function isoFor(y, m, d){ return toISO(new Date(y, m, d)); }
+
+  function calendarView(tasks){
+    var y = state.calendar.year, m = state.calendar.month;
+    var first = new Date(y, m, 1);
+    var startWeekday = first.getDay();
+    var totalDays = new Date(y, m+1, 0).getDate();
+    var prevMonthDays = new Date(y, m, 0).getDate();
+    var cells = [];
+    for(var i = startWeekday - 1; i >= 0; i--) cells.push({ day: prevMonthDays - i, iso: isoFor(y, m-1, prevMonthDays - i), other:true });
+    for(var d = 1; d <= totalDays; d++) cells.push({ day: d, iso: isoFor(y, m, d), other:false });
+    var rem = cells.length % 7;
+    if(rem){ var extra = 7 - rem; for(var e = 1; e <= extra; e++) cells.push({ day: e, iso: isoFor(y, m+1, e), other:true }); }
+
+    var monthLabel = first.toLocaleDateString("en-IN", { month:"long", year:"numeric" });
+    var todayIso = todayISO();
+    var dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+    var head = '<div class="calendar-head">' +
+      '<button class="btn btn-ghost btn-sm" data-action="cal-prev" type="button">‹</button>' +
+      '<span class="calendar-month-label">' + monthLabel + '</span>' +
+      '<button class="btn btn-ghost btn-sm" data-action="cal-next" type="button">›</button>' +
+      '<button class="btn btn-ghost btn-sm" data-action="cal-today" type="button">Today</button>' +
+      '</div>';
+    var dayNamesHtml = '<div class="calendar-daynames">' + dayNames.map(function(n){ return '<span>' + n + '</span>'; }).join("") + '</div>';
+
+    var gridHtml = '<div class="calendar-grid">' + cells.map(function(c){
+      var dayTasks = sortTasks(tasksOnDay(tasks, c.iso));
+      var shown = dayTasks.slice(0, 3);
+      var more = dayTasks.length - shown.length;
+      var chips = shown.map(function(t){
+        var p = computePriority(t);
+        var range = formatDate(t.startDate) + ' → ' + formatDate(t.endDate);
+        return '<div class="cal-chip ' + (p ? priorityClass(p) : "st-completed") + '" data-action="open-task" data-id="' + t.id + '" title="' + escapeHtml(t.title) + ' · ' + range + '">' + escapeHtml(t.title) + '</div>';
+      }).join("");
+      var moreHtml = more > 0 ? '<div class="cal-more" data-action="select-day" data-date="' + c.iso + '">+' + more + ' more</div>' : "";
+      var cls = "calendar-cell" + (c.other ? " other-month" : "") + (c.iso === todayIso ? " today" : "") + (c.iso === state.calendar.selectedDay ? " selected" : "");
+      return '<div class="' + cls + '" data-action="select-day" data-date="' + c.iso + '"><div class="calendar-date">' + c.day + '</div>' + chips + moreHtml + '</div>';
+    }).join("") + '</div>';
+
+    var agendaHtml = "";
+    if(state.calendar.selectedDay){
+      var dayTasks2 = sortTasks(tasksOnDay(tasks, state.calendar.selectedDay));
+      agendaHtml = '<div class="panel" style="margin-top:14px;"><h3>' + formatDate(state.calendar.selectedDay) + '</h3>' +
+        (dayTasks2.length ? '<div class="task-list">' + dayTasks2.map(function(t){ return taskCard(t); }).join("") + '</div>' : '<p class="section-hint">Nothing scheduled.</p>') +
+        '</div>';
+    }
+    return '<div class="calendar">' + head + dayNamesHtml + gridHtml + '</div>' + agendaHtml;
+  }
+
+  // ---------- roster (Admin only) ----------
+  function rosterCard(m){
+    var otherManagers = state.team.filter(function(x){ return x.isManager && x.id !== m.id; });
+    var reportsOpts = '<option value="">No manager</option>' + otherManagers.map(function(mg){
+      return '<option value="' + mg.id + '"' + (m.managerId === mg.id ? " selected" : "") + '>' + escapeHtml(mg.name) + '</option>';
+    }).join("");
+    var bottom = m.isManager
+      ? '<span class="section-hint">Manages ' + reporteesOf(m.id).length + ' ' + (reporteesOf(m.id).length === 1 ? "person" : "people") + '</span>'
+      : '<span>Reports to</span><select data-action="set-reports-to" data-id="' + m.id + '">' + reportsOpts + '</select>';
+    return '' +
+      '<div class="roster-card">' +
+        '<div class="roster-card-top">' +
+          '<input type="text" value="' + escapeHtml(m.name) + '" data-action="rename-member" data-id="' + m.id + '">' +
+          '<button class="btn btn-ghost btn-sm" data-action="remove-member" data-id="' + m.id + '">Remove</button>' +
+        '</div>' +
+        '<div class="roster-card-bottom">' +
+          '<label class="roster-check"><input type="checkbox" data-action="toggle-manager" data-id="' + m.id + '"' + (m.isManager ? " checked" : "") + '> Manager</label>' +
+          bottom +
+          '<span>PIN</span><input type="text" class="pin-input" inputmode="numeric" maxlength="6" value="' + escapeHtml(m.pin || "") + '" data-action="set-pin" data-id="' + m.id + '">' +
+        '</div>' +
+      '</div>';
+  }
+
+  // ---------- login / session ----------
+  function renderLogin(){
+    if(ROLE === "admin"){
+      return '<div class="login-wrap"><div class="login-card">' +
+        '<h2 class="section-title" style="margin-bottom:4px;">Admin login</h2>' +
+        '<p class="section-hint" style="margin-bottom:16px;">Enter the admin PIN to continue.</p>' +
+        '<div class="field"><label for="login-pin">PIN</label><input type="password" inputmode="numeric" id="login-pin"></div>' +
+        (state.loginError ? '<p class="login-error">' + escapeHtml(state.loginError) + '</p>' : "") +
+        '<button class="btn btn-primary" data-action="do-login" type="button" style="width:100%;margin-top:6px;">Log in</button>' +
+        '</div></div>';
+    }
+    var pool = ROLE === "manager" ? managers() : state.team.filter(function(m){ return !m.isManager; });
+    if(!pool.length){
+      return '<div class="login-wrap"><div class="login-card">' +
+        emptyState(ROLE === "manager" ? "No managers set up yet" : "No team members yet", "Ask an Admin to set this up first.") +
+        '</div></div>';
+    }
+    var opts = pool.map(function(m){ return '<option value="' + m.id + '">' + escapeHtml(m.name) + '</option>'; }).join("");
+    return '<div class="login-wrap"><div class="login-card">' +
+      '<h2 class="section-title" style="margin-bottom:4px;">' + (ROLE === "manager" ? "Manager" : "Employee") + ' login</h2>' +
+      '<p class="section-hint" style="margin-bottom:16px;">Pick your name and enter your PIN.</p>' +
+      '<div class="field"><label for="login-name">Your name</label><select id="login-name">' + opts + '</select></div>' +
+      '<div class="field"><label for="login-pin">PIN</label><input type="password" inputmode="numeric" id="login-pin"></div>' +
+      (state.loginError ? '<p class="login-error">' + escapeHtml(state.loginError) + '</p>' : "") +
+      '<button class="btn btn-primary" data-action="do-login" type="button" style="width:100%;margin-top:6px;">Log in</button>' +
+      '<p class="section-hint" style="margin-top:10px;">Forgot your PIN? Ask an Admin to look it up or reset it.</p>' +
+      '</div></div>';
+  }
+  function handleLoginSubmit(){
+    var pinEl = document.getElementById("login-pin");
+    var pin = pinEl ? pinEl.value.trim() : "";
+    if(ROLE === "admin"){
+      if(pin && pin === ADMIN_PIN){
+        lsSet("invisel_admin_ok", "1");
+        state.loggedIn = true; state.loginError = null;
+        render();
+      } else {
+        state.loginError = "Incorrect PIN.";
+        renderView();
+      }
+      return;
+    }
+    var nameEl = document.getElementById("login-name");
+    var id = nameEl ? nameEl.value : "";
+    var mem = getMember(id);
+    if(mem && pin && String(mem.pin || "") === pin){
+      if(ROLE === "manager"){ state.managerViewer = id; lsSet("invisel_manager_id", id); }
+      else { state.employeeViewer = id; lsSet("invisel_employee_id", id); }
+      state.loggedIn = true; state.loginError = null;
+      render();
+    } else {
+      state.loginError = "Name and PIN don't match.";
+      renderView();
+    }
+  }
+  function handleLogout(){
+    if(ROLE === "admin") lsRemove("invisel_admin_ok");
+    if(ROLE === "manager") lsRemove("invisel_manager_id");
+    if(ROLE === "employee") lsRemove("invisel_employee_id");
+    state.loggedIn = false;
+    state.managerViewer = null;
+    state.employeeViewer = null;
+    state.loginError = null;
+    render();
+  }
+  function updateLogoutControl(){
+    var slot = document.getElementById("logout-slot");
+    if(!slot) return;
+    slot.innerHTML = state.loggedIn ? '<button class="btn btn-ghost btn-sm" data-action="logout" type="button">Log out</button>' : "";
+  }
+
+  // ---------- role views ----------
+  function renderAdmin(){
+    var visible = sortTasks(applyFilters(state.tasks));
+    var stats = statsFor(state.tasks);
+    var rosterHtml = state.team.map(rosterCard).join("") || '<p class="section-hint">No team members yet — add one below.</p>';
+    var mgrOpts = managers().map(function(mg){ return '<option value="' + mg.id + '">' + escapeHtml(mg.name) + '</option>'; }).join("");
+
+    return '' +
+      '<div class="section-head"><h2 class="section-title">Overview</h2><span class="section-hint">Full access — tasks, team roster and insights</span></div>' +
+      '<div class="stat-grid">' +
+        statCard("Total tasks", stats.total, "") +
+        statCard("Overdue", stats.overdue, stats.overdue ? "warn" : "") +
+        statCard("Due in 7 days", stats.dueSoon, "") +
+        statCard("Completed this week", stats.completedWeek, "ok") +
+      '</div>' +
+
+      '<div class="section-head"><h2 class="section-title">Upcoming</h2><span class="section-hint">Overdue, plus next ' + UPCOMING_DAYS + ' days</span></div>' +
+      '<div class="panel">' + upcomingPanel(state.tasks) + '</div>' +
+
+      '<div class="section-head"><h2 class="section-title">Productivity</h2><span class="section-hint">Monthly performance, for reviews and reporting</span></div>' +
+      '<div class="panel">' + monthlyPanel(state.tasks) + '</div>' +
+      '<div class="panel" style="margin-top:14px;"><h3>By person</h3>' + monthlyBreakdownTable(state.team.filter(function(mem){ return !mem.isManager; }), state.tasks) + '</div>' +
+
+      '<div class="section-head"><h2 class="section-title">Team roster</h2></div>' +
+      '<div class="panel">' + rosterHtml +
+        '<div class="add-row">' +
+          '<input type="text" id="new-member-name" placeholder="New team member name">' +
+          '<label><input type="checkbox" id="new-member-manager"> Manager</label>' +
+          '<select id="new-member-reports-to"><option value="">No manager</option>' + mgrOpts + '</select>' +
+          '<input type="text" id="new-member-pin" class="pin-input" inputmode="numeric" maxlength="6" placeholder="PIN" value="' + randomPin() + '">' +
+          '<button class="btn btn-primary btn-sm" data-action="add-member">+ Add</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="section-head"><h2 class="section-title">All tasks</h2><button class="btn btn-primary btn-sm" data-action="open-add-task">+ Add task</button></div>' +
+      viewToggle() +
+      (state.viewMode === "list" ? filterBar(true) : "") +
+      (state.viewMode === "calendar"
+        ? calendarView(state.tasks)
+        : '<div class="task-list">' + (visible.length ? visible.map(function(t){ return taskCard(t); }).join("") : emptyState("No tasks match", "Try adjusting the filters above.")) + '</div>') +
+
+      '<div class="section-head"><h2 class="section-title">Insights</h2></div>' +
+      '<div class="panel"><h3>Priority mix (auto, from end dates)</h3>' + priorityBreakdownBars(state.tasks) + '</div>' +
+      '<div class="panel"><h3>Category mix</h3>' + categoryBreakdownBars(state.tasks) + '</div>' +
+      '<div class="panel"><h3>Team workload</h3>' + workloadTable() + '</div>' +
+      '<div class="section-head"><span class="section-hint">Testing the tool?</span><button class="btn btn-ghost btn-sm" data-action="reset-demo" data-confirm="0">Reset sample data</button></div>';
+  }
+
+  function renderManager(){
+    var mgrs = managers();
+    if(!mgrs.length){
+      return emptyState("No managers set up yet", "Ask an Admin to check \u201cManager\u201d for someone in the team roster.");
+    }
+    if(!state.managerViewer || !isManagerId(state.managerViewer)) state.managerViewer = mgrs[0].id;
+    var reportees = reporteesOf(state.managerViewer);
+    var reporteeIds = reportees.map(function(m){ return m.id; });
+    var myTasks = state.tasks.filter(function(t){ return reporteeIds.indexOf(t.assigneeId) !== -1; });
+    var visible = sortTasks(applyFilters(myTasks));
+    var stats = statsFor(myTasks);
+
+    return '' +
+      '<div class="who-am-i">Logged in as <strong>' + escapeHtml(memberName(state.managerViewer)) + '</strong></div>' +
+      (!reportees.length ? '<div class="banner" style="display:block;">No one reports to ' + escapeHtml(memberName(state.managerViewer)) + ' yet. Ask Admin to set this in the team roster.</div>' : "") +
+      '<div class="stat-grid">' +
+        statCard("Total tasks", stats.total, "") +
+        statCard("Overdue", stats.overdue, stats.overdue ? "warn" : "") +
+        statCard("Due in 7 days", stats.dueSoon, "") +
+        statCard("Completed this week", stats.completedWeek, "ok") +
+      '</div>' +
+
+      '<div class="section-head"><h2 class="section-title">Team tasks</h2>' + (reportees.length ? '<button class="btn btn-primary btn-sm" data-action="open-add-task">+ Add task</button>' : "") + '</div>' +
+      viewToggle() +
+      (state.viewMode === "list" ? filterBar(true, reportees) : "") +
+      (state.viewMode === "calendar"
+        ? calendarView(myTasks)
+        : '<div class="task-list">' + (visible.length ? visible.map(function(t){ return taskCard(t); }).join("") : emptyState("No tasks match", reportees.length ? "Try adjusting the filters above." : "Nothing to show yet.")) + '</div>') +
+
+      '<div class="section-head"><h2 class="section-title">Monthly performance</h2><span class="section-hint">Your team, for the month shown</span></div>' +
+      '<div class="panel">' + monthlyPanel(myTasks) + '</div>' +
+      '<div class="panel" style="margin-top:14px;"><h3>By person</h3>' + monthlyBreakdownTable(reportees, myTasks) + '</div>' +
+
+      '<div class="section-head"><h2 class="section-title">Insights</h2></div>' +
+      '<div class="panel"><h3>Priority mix (auto, from end dates)</h3>' + priorityBreakdownBars(myTasks) + '</div>' +
+      '<div class="panel"><h3>Workload by person</h3>' + workloadTable(reportees, myTasks) + '</div>';
+  }
+
+  function renderEmployee(){
+    if(!state.team.length){
+      return emptyState("No team members yet", "Ask an Admin to add people from the Admin tab.");
+    }
+    var mine = state.tasks.filter(function(t){ return t.assigneeId === state.employeeViewer; });
+    var sorted = sortTasks(mine);
+    var stats = statsFor(mine);
+    return '' +
+      '<div class="who-am-i">Logged in as <strong>' + escapeHtml(memberName(state.employeeViewer)) + '</strong></div>' +
+      '<div class="stat-grid">' +
+        statCard("My tasks", stats.total, "") +
+        statCard("Overdue", stats.overdue, stats.overdue ? "warn" : "") +
+        statCard("Due in 7 days", stats.dueSoon, "") +
+        statCard("Completed", stats.completedTotal, "ok") +
+      '</div>' +
+      '<div class="section-head"><h2 class="section-title">My tasks</h2><span class="section-hint">Sorted by urgency, then deadline — view only, update status as you go</span></div>' +
+      viewToggle() +
+      (state.viewMode === "calendar"
+        ? calendarView(mine)
+        : '<div class="task-list">' + (sorted.length ? sorted.map(function(t){ return taskCard(t, { showAssignedBy:true }); }).join("") : emptyState("Nothing assigned", "You're all caught up.")) + '</div>') +
+      '<div class="section-head"><h2 class="section-title">My monthly performance</h2><span class="section-hint">Great for checking in at month-end</span></div>' +
+      '<div class="panel">' + monthlyPanel(mine) + '</div>';
+  }
+
+  function renderView(){
+    var view = document.getElementById("view");
+    if(state.loading){ view.innerHTML = '<div class="loading-view">Loading tasks…</div>'; updateLogoutControl(); return; }
+    if(!state.loggedIn){ view.innerHTML = renderLogin(); updateLogoutControl(); highlightNav(); return; }
+    if(ROLE === "admin") view.innerHTML = renderAdmin();
+    else if(ROLE === "manager") view.innerHTML = renderManager();
+    else view.innerHTML = renderEmployee();
+    highlightNav();
+    updateLogoutControl();
+  }
+  function highlightNav(){
+    document.querySelectorAll(".role-tab[data-role]").forEach(function(a){
+      a.setAttribute("aria-selected", a.getAttribute("data-role") === ROLE ? "true" : "false");
+    });
+  }
+
+  // ---------- modal ----------
+  function openModal(mode, taskId){
+    var task = taskId ? state.tasks.find(function(t){ return t.id === taskId; }) : null;
+    state.modal = { mode: mode, taskId: taskId || null, notes: task ? task.notes.slice() : [], confirmingDelete: false };
+    renderModal();
+  }
+  function closeModal(){
+    state.modal = null;
+    document.getElementById("modal-root").innerHTML = "";
+  }
+  function canEditFully(){ return ROLE === "admin" || ROLE === "manager"; }
+
+  function renderModal(){
+    var root = document.getElementById("modal-root");
+    if(!state.modal){ root.innerHTML = ""; return; }
+    var m = state.modal;
+    var isAdd = m.mode === "add";
+    var task = isAdd ? null : state.tasks.find(function(t){ return t.id === m.taskId; });
+    var isOwnTask = ROLE === "employee" && task && task.assigneeId === state.employeeViewer;
+    var fieldsEditable = isAdd || canEditFully();
+    var disabledAttr = fieldsEditable ? "" : " disabled";
+
+    var assigneePool = isAdd ? assignableMembers() : state.team;
+    var assigneeOpts = assigneePool.map(function(mem){
+      var sel = task && task.assigneeId === mem.id ? " selected" : "";
+      return '<option value="' + mem.id + '"' + sel + '>' + escapeHtml(mem.name) + '</option>';
+    }).join("");
+    var assigneeFieldHtml = isAdd
+      ? '<div class="field"><label for="f-assignees">Assign to</label><select id="f-assignees" multiple size="' + Math.max(2, Math.min(6, assigneePool.length)) + '">' + assigneeOpts + '</select><p class="section-hint" style="margin-top:4px;">Ctrl/Cmd-click to select more than one — a separate copy of this task is created for each person, so everyone tracks their own status.</p></div>'
+      : '<div class="field"><label for="f-assignee">Assignee</label><select id="f-assignee"' + disabledAttr + '>' + assigneeOpts + '</select></div>';
+    var categoryOpts = CATEGORIES.map(function(c){
+      var sel = (task ? task.category === c : c === CATEGORIES[0]) ? " selected" : "";
+      return '<option value="' + c + '"' + sel + '>' + c + '</option>';
+    }).join("");
+    var statusOpts = STATUSES.map(function(s){
+      var sel = (task ? task.status === s : s === "Not Started") ? " selected" : "";
+      return '<option value="' + s + '"' + sel + '>' + s + '</option>';
+    }).join("");
+
+    var notesHtml = m.notes.length
+      ? m.notes.map(function(n){ return '<div class="note-item"><div class="note-date">' + formatDate(n.date) + '</div>' + escapeHtml(n.text) + '</div>'; }).join("")
+      : '<p class="section-hint" style="margin:0;">No notes yet.</p>';
+
+    var canDelete = !isAdd && ROLE === "admin";
+    var canSave = isAdd ? canEditFully() : (canEditFully() || isOwnTask);
+    var initialStart = task ? task.startDate : todayISO();
+    var initialEnd = task ? task.endDate : todayISO();
+    var initialStatus = task ? task.status : "Not Started";
+    var assignedByText = task ? assignedByLabel(task) : null;
+
+    root.innerHTML = '' +
+      '<div class="modal-overlay" data-action="overlay-close">' +
+        '<div class="modal" onclick="event.stopPropagation()">' +
+          '<div class="modal-head"><h3 class="modal-title">' + (isAdd ? "New task" : "Task details") + '</h3><button class="btn btn-ghost btn-sm" data-action="close-modal">Close</button></div>' +
+          (assignedByText ? '<p class="section-hint" style="margin:-8px 0 12px;">Assigned by ' + escapeHtml(assignedByText) + '</p>' : "") +
+          '<div class="field"><label for="f-title">Title</label><input type="text" id="f-title" value="' + escapeHtml(task ? task.title : "") + '"' + disabledAttr + '></div>' +
+          '<div class="field"><label for="f-desc">Description</label><textarea id="f-desc"' + disabledAttr + '>' + escapeHtml(task ? task.description : "") + '</textarea></div>' +
+          (isAdd
+            ? assigneeFieldHtml + '<div class="field"><label for="f-category">Category</label><select id="f-category"' + disabledAttr + '>' + categoryOpts + '</select></div>'
+            : '<div class="field-row">' + assigneeFieldHtml + '<div class="field"><label for="f-category">Category</label><select id="f-category"' + disabledAttr + '>' + categoryOpts + '</select></div></div>') +
+          '<div class="field-row">' +
+            '<div class="field"><label for="f-start">Start date</label><input type="date" id="f-start" value="' + initialStart + '"' + disabledAttr + '></div>' +
+            '<div class="field"><label for="f-end">End date (deadline)</label><input type="date" id="f-end" value="' + initialEnd + '"' + disabledAttr + '><div class="priority-preview">Priority: <span id="priority-preview-badge"></span></div></div>' +
+          '</div>' +
+          '<div class="field"><label for="f-status">Status</label><select id="f-status">' + statusOpts + '</select></div>' +
+          (!isAdd ? '<div class="field"><label>Notes</label><div class="notes-list" id="notes-list">' + notesHtml + '</div><div style="display:flex;gap:8px;"><input type="text" id="f-note" placeholder="Add a note…" style="flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 10px;"><button class="btn btn-sm" data-action="add-note" type="button">Add</button></div></div>' : "") +
+          '<div class="modal-footer">' +
+            '<div>' + (canDelete ? '<button class="btn btn-danger btn-sm" data-action="delete-task" data-confirm="' + (m.confirmingDelete ? "1" : "0") + '">' + (m.confirmingDelete ? "Click again to confirm" : "Delete task") + '</button>' : '') + '</div>' +
+            '<div class="modal-footer-right"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancel</button>' + (canSave ? '<button class="btn btn-primary btn-sm" data-action="save-task">Save</button>' : '') + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    updatePriorityPreview(initialEnd, initialStatus);
+  }
+
+  function updatePriorityPreview(endVal, statusVal){
+    var badgeEl = document.getElementById("priority-preview-badge");
+    if(!badgeEl) return;
+    var endEl = document.getElementById("f-end");
+    var statusEl = document.getElementById("f-status");
+    var end = endVal != null ? endVal : (endEl ? endEl.value : todayISO());
+    var status = statusVal != null ? statusVal : (statusEl ? statusEl.value : "Not Started");
+    badgeEl.innerHTML = priorityBadge(computePriority({ endDate: end, status: status }));
+  }
+
+  function saveTaskFromModal(){
+    var m = state.modal;
+    var title = document.getElementById("f-title").value.trim();
+    if(!title){ showToast("Give the task a title first."); return; }
+    var status = document.getElementById("f-status").value;
+    var startVal = document.getElementById("f-start").value || todayISO();
+    var endVal = document.getElementById("f-end").value || startVal;
+    if(endVal < startVal){ endVal = startVal; showToast("End date adjusted to match start date."); }
+
+    if(m.mode === "add"){
+      var assigneeSel = document.getElementById("f-assignees");
+      var assigneeIds = assigneeSel ? Array.prototype.map.call(assigneeSel.selectedOptions, function(o){ return o.value; }) : [];
+      if(!assigneeIds.length){ showToast("Pick at least one person to assign this to."); return; }
+      var assignedBy = ROLE === "manager" ? { type:"manager", id: state.managerViewer } : (ROLE === "admin" ? { type:"admin", id:null } : null);
+      var desc = document.getElementById("f-desc").value.trim();
+      var category = document.getElementById("f-category").value;
+      var sharedNotes = m.notes;
+      assigneeIds.forEach(function(assigneeId){
+        state.tasks.push({
+          id: uid("t"),
+          title: title,
+          description: desc,
+          assigneeId: assigneeId,
+          category: category,
+          status: status,
+          startDate: startVal,
+          endDate: endVal,
+          createdDate: todayISO(),
+          completedDate: status === "Completed" ? todayISO() : null,
+          notes: sharedNotes.slice(),
+          assignedBy: assignedBy
+        });
+      });
+      showToast(assigneeIds.length > 1 ? ("Task added for " + assigneeIds.length + " people.") : "Task added.");
+    } else {
+      var task = state.tasks.find(function(t){ return t.id === m.taskId; });
+      if(!task) return;
+      if(canEditFully()){
+        task.title = title;
+        task.description = document.getElementById("f-desc").value.trim();
+        task.assigneeId = document.getElementById("f-assignee").value || null;
+        task.category = document.getElementById("f-category").value;
+        task.startDate = startVal;
+        task.endDate = endVal;
+      }
+      if(task.status !== "Completed" && status === "Completed") task.completedDate = todayISO();
+      if(status !== "Completed") task.completedDate = null;
+      task.status = status;
+      task.notes = m.notes;
+      showToast("Saved.");
+    }
     closeModal();
-    loadTasks();
-  } catch (err) {
-    showToast(err.message, true);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Save progress';
+    render();
+    persist();
   }
-});
 
-function drawCalendar() {
-  const el = document.getElementById('calendarEl');
-  const byDate = groupTasksByDate(allTasks);
-  renderCalendar(el, calYear, calMonth, byDate, (dateStr, tasks) => {
-    if (!tasks.length) return;
-    if (tasks.length === 1) { openTaskModal(tasks[0].taskId); return; }
-    document.getElementById('filterStatus').value = '';
-    document.getElementById('filterPriority').value = '';
-    renderTaskList();
-    document.getElementById('view-tasks').style.display = '';
-    document.getElementById('view-calendar').style.display = 'none';
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('.nav-btn[data-view="tasks"]').classList.add('active');
-    document.getElementById('pageTitle').textContent = 'My Tasks';
-    document.getElementById('pageSub').textContent = `Showing tasks due ${formatDatePretty(dateStr)}.`;
-  }, (year, month) => {
-    calYear = year;
-    calMonth = month;
-    renderCalLog(year, month);
-  });
-}
+  // ---------- event handling ----------
+  function handleClick(e){
+    var el = e.target.closest("[data-action]");
+    if(!el) return;
+    var action = el.getAttribute("data-action");
 
-function renderCalLog(year, month) {
-  const key = `${year}-${String(month + 1).padStart(2, '0')}`;
-  document.getElementById('calLogMonthLabel').textContent = monthLabel(key);
-  const completed = allTasks.filter(t => t.status === 'Completed' && monthKey(effectiveCompletedDate(t)) === key)
-    .sort((a, b) => (effectiveCompletedDate(b) || '').localeCompare(effectiveCompletedDate(a) || ''));
-
-  document.getElementById('calLogCount').textContent = `${completed.length} task${completed.length === 1 ? '' : 's'}`;
-  const container = document.getElementById('calLogList');
-  if (!completed.length) {
-    container.innerHTML = `<div class="empty-state"><div class="ic">—</div><div class="txt">Nothing completed this month yet.</div></div>`;
-    return;
+    if(action === "do-login"){ handleLoginSubmit(); return; }
+    if(action === "logout"){ handleLogout(); return; }
+    if(action === "open-task"){ openModal("edit", el.getAttribute("data-id")); return; }
+    if(action === "open-add-task"){ openModal("add", null); return; }
+    if(action === "close-modal" || action === "overlay-close"){
+      if(action === "overlay-close" && e.target !== el) return;
+      closeModal();
+      return;
+    }
+    if(action === "save-task"){ saveTaskFromModal(); return; }
+    if(action === "refresh"){ manualRefresh(); return; }
+    if(action === "set-view"){ state.viewMode = el.getAttribute("data-mode"); renderView(); return; }
+    if(action === "cal-prev" || action === "cal-next"){
+      var delta = action === "cal-prev" ? -1 : 1;
+      var mm = state.calendar.month + delta, yy = state.calendar.year;
+      if(mm < 0){ mm = 11; yy--; } else if(mm > 11){ mm = 0; yy++; }
+      state.calendar.month = mm; state.calendar.year = yy; state.calendar.selectedDay = null;
+      renderView();
+      return;
+    }
+    if(action === "month-prev" || action === "month-next"){
+      var mdelta = action === "month-prev" ? -1 : 1;
+      var mmm = state.monthReview.month + mdelta, myy = state.monthReview.year;
+      if(mmm < 0){ mmm = 11; myy--; } else if(mmm > 11){ mmm = 0; myy++; }
+      state.monthReview.month = mmm; state.monthReview.year = myy;
+      renderView();
+      return;
+    }
+    if(action === "month-current"){
+      var tdm = todayDate();
+      state.monthReview.month = tdm.getMonth(); state.monthReview.year = tdm.getFullYear();
+      renderView();
+      return;
+    }
+    if(action === "cal-today"){
+      var td = todayDate();
+      state.calendar.month = td.getMonth(); state.calendar.year = td.getFullYear(); state.calendar.selectedDay = todayISO();
+      renderView();
+      return;
+    }
+    if(action === "select-day"){
+      var date = el.getAttribute("data-date");
+      state.calendar.selectedDay = (state.calendar.selectedDay === date) ? null : date;
+      renderView();
+      return;
+    }
+    if(action === "delete-task"){
+      if(el.getAttribute("data-confirm") === "1"){
+        state.tasks = state.tasks.filter(function(t){ return t.id !== state.modal.taskId; });
+        closeModal();
+        render();
+        persist();
+        showToast("Task deleted.");
+      } else {
+        state.modal.confirmingDelete = true;
+        renderModal();
+      }
+      return;
+    }
+    if(action === "add-note"){
+      var input = document.getElementById("f-note");
+      var text = input.value.trim();
+      if(!text) return;
+      state.modal.notes.push({ text: text, date: todayISO() });
+      input.value = "";
+      renderModal();
+      return;
+    }
+    if(action === "add-member"){
+      var nameInput = document.getElementById("new-member-name");
+      var name = nameInput.value.trim();
+      if(!name) return;
+      var isMgr = document.getElementById("new-member-manager").checked;
+      var reportsTo = document.getElementById("new-member-reports-to").value;
+      var pinInput = document.getElementById("new-member-pin");
+      var newPin = (pinInput.value || "").replace(/[^0-9]/g, "").slice(0, 6) || randomPin();
+      state.team.push({ id: uid("tm"), name: name, isManager: isMgr, managerId: isMgr ? null : (reportsTo || null), pin: newPin });
+      render();
+      persist();
+      return;
+    }
+    if(action === "remove-member"){
+      var id = el.getAttribute("data-id");
+      state.team = state.team.filter(function(mem){ return mem.id !== id; });
+      state.team.forEach(function(mem){ if(mem.managerId === id) mem.managerId = null; });
+      state.tasks.forEach(function(t){ if(t.assigneeId === id) t.assigneeId = null; });
+      render();
+      persist();
+      return;
+    }
+    if(action === "reset-demo"){
+      if(el.getAttribute("data-confirm") === "1"){
+        state.team = normalizeTeam(seedTeam());
+        state.tasks = normalizeTasks(seedTasks());
+        render();
+        persist();
+        showToast("Sample data restored for everyone.");
+      } else {
+        el.setAttribute("data-confirm", "1");
+        el.textContent = "This resets data for everyone — click again to confirm";
+        setTimeout(function(){ if(el.isConnected){ el.setAttribute("data-confirm","0"); el.textContent = "Reset sample data"; } }, 3500);
+      }
+      return;
+    }
   }
-  container.innerHTML = completed.map(t => `
-    <div class="task-row" style="cursor:default;">
-      <div class="task-main">
-        <div class="title">${escapeHtml(t.title)}</div>
-        <div class="meta">From ${escapeHtml(t.assignedBy)}</div>
-      </div>
-      <span class="badge tone-done">Completed</span>
-      <span class="badge tone-${(t.priority || 'medium').toLowerCase()}">${escapeHtml(t.priority || 'Medium')}</span>
-      <div style="width:90px;"></div>
-      <div class="task-dates">${formatDatePretty(effectiveCompletedDate(t))}</div>
-    </div>
-  `).join('');
-}
 
-function drawLog() {
-  const completed = allTasks.filter(t => t.status === 'Completed');
-  populateLogMonths(document.getElementById('logMonth'), completed);
-  renderLog();
-}
-
-function renderLog() {
-  const monthSel = document.getElementById('logMonth').value;
-  const completed = allTasks.filter(t => t.status === 'Completed');
-  const filtered = completed
-    .filter(t => !monthSel || monthKey(effectiveCompletedDate(t)) === monthSel)
-    .sort((a, b) => (effectiveCompletedDate(b) || '').localeCompare(effectiveCompletedDate(a) || ''));
-
-  document.getElementById('logCount').textContent = filtered.length;
-
-  const container = document.getElementById('logList');
-  if (!filtered.length) {
-    container.innerHTML = `<div class="empty-state"><div class="ic">—</div><div class="txt">Nothing completed in this period yet.</div></div>`;
-    return;
+  function handleChange(e){
+    var t = e.target;
+    if(t.matches("[data-filter]")){
+      state.filters[t.getAttribute("data-filter")] = t.value;
+      renderView();
+      return;
+    }
+    if(t.matches("[data-action='quick-status']")){
+      var id = t.getAttribute("data-id");
+      var task = state.tasks.find(function(x){ return x.id === id; });
+      if(!task) return;
+      if(task.status !== "Completed" && t.value === "Completed") task.completedDate = todayISO();
+      if(t.value !== "Completed") task.completedDate = null;
+      task.status = t.value;
+      render();
+      persist();
+      return;
+    }
+    if(t.matches("[data-action='set-viewer']")){
+      state.employeeViewer = t.value;
+      renderView();
+      return;
+    }
+    if(t.matches("[data-action='set-manager-viewer']")){
+      state.managerViewer = t.value;
+      state.filters = { assignee:"all", priority:"all", status:"all", category:"all" };
+      renderView();
+      return;
+    }
+    if(t.matches("[data-action='rename-member']")){
+      var mid = t.getAttribute("data-id");
+      var mem = getMember(mid);
+      if(mem){ mem.name = t.value.trim() || mem.name; render(); persist(); }
+      return;
+    }
+    if(t.matches("[data-action='toggle-manager']")){
+      var mid2 = t.getAttribute("data-id");
+      var mem2 = getMember(mid2);
+      if(mem2){
+        mem2.isManager = t.checked;
+        if(mem2.isManager) mem2.managerId = null;
+        render();
+        persist();
+      }
+      return;
+    }
+    if(t.matches("[data-action='set-reports-to']")){
+      var mid3 = t.getAttribute("data-id");
+      var mem3 = getMember(mid3);
+      if(mem3){ mem3.managerId = t.value || null; render(); persist(); }
+      return;
+    }
+    if(t.matches("[data-action='set-pin']")){
+      var mid4 = t.getAttribute("data-id");
+      var mem4 = getMember(mid4);
+      var cleanPin = t.value.replace(/[^0-9]/g, "").slice(0, 6);
+      if(mem4){ mem4.pin = cleanPin || "0000"; render(); persist(); }
+      return;
+    }
+    if(t.id === "f-end" || t.id === "f-status"){ updatePriorityPreview(); return; }
   }
-  container.innerHTML = filtered.map(t => `
-    <div class="task-row" style="cursor:default;">
-      <div class="task-main">
-        <div class="title">${escapeHtml(t.title)}</div>
-        <div class="meta">From ${escapeHtml(t.assignedBy)}</div>
-      </div>
-      <span class="badge tone-done">Completed</span>
-      <span class="badge tone-${(t.priority || 'medium').toLowerCase()}">${escapeHtml(t.priority || 'Medium')}</span>
-      <div style="width:90px;"></div>
-      <div class="task-dates">${formatDatePretty(effectiveCompletedDate(t))}</div>
-    </div>
-  `).join('');
-}
 
-document.getElementById('logMonth').addEventListener('change', renderLog);
+  function handleKeydown(e){
+    if(e.key === "Enter" && e.target && e.target.id === "login-pin"){
+      handleLoginSubmit();
+    }
+  }
+
+  document.body.addEventListener("click", handleClick);
+  document.body.addEventListener("change", handleChange);
+  document.body.addEventListener("keydown", handleKeydown);
+
+  function render(){ renderView(); }
+
+  document.addEventListener("DOMContentLoaded", loadData);
+})();
+
 </script>
 </body>
 </html>
