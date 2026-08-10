@@ -235,11 +235,7 @@ table.workload tr:last-child td{ border-bottom:none; }
       <div class="topbar-right">
         <div class="sync-status"><span class="dot-status" id="sync-dot"></span><span id="sync-text">Connecting…</span><button class="btn btn-ghost btn-sm" data-action="refresh" type="button">↻</button></div>
         <span id="logout-slot"></span>
-        <nav class="role-switch" aria-label="Switch view">
-          <a class="role-tab" data-role="admin" href="admin.html">Admin</a>
-          <a class="role-tab" data-role="manager" href="manager.html">Manager</a>
-          <a class="role-tab" data-role="employee" href="employee.html">Employee</a>
-        </nav>
+        <nav class="role-switch" aria-label="Current view"><span class="role-tab" aria-selected="true">Manager</span></nav>
       </div>
     </div>
     <div class="sheen"></div>
@@ -346,7 +342,11 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     if(!t.assignedBy) return null;
     if(t.assignedBy.type === "admin") return "Admin";
     if(t.assignedBy.type === "manager") return memberName(t.assignedBy.id);
+    if(t.assignedBy.type === "self") return "You";
     return null;
+  }
+  function isSelfAddedTask(t){
+    return !!(t && t.assignedBy && t.assignedBy.type === "self" && ROLE === "employee" && t.assigneeId === state.employeeViewer);
   }
   function assignableMembers(){
     if(ROLE === "manager") return reporteesOf(state.managerViewer);
@@ -1018,7 +1018,8 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
         statCard("Due in 7 days", stats.dueSoon, "") +
         statCard("Completed", stats.completedTotal, "ok") +
       '</div>' +
-      '<div class="section-head"><h2 class="section-title">My tasks</h2><span class="section-hint">Sorted by urgency, then deadline — view only, update status as you go</span></div>' +
+      '<div class="section-head"><h2 class="section-title">My tasks</h2><button class="btn btn-primary btn-sm" data-action="open-add-task">+ Add task</button></div>' +
+      '<p class="section-hint" style="margin:-10px 0 12px;">Tasks from your manager: view and update status only. Tasks you add yourself: fully yours to edit.</p>' +
       viewToggle() +
       (state.viewMode === "calendar"
         ? calendarView(mine)
@@ -1062,7 +1063,9 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     var isAdd = m.mode === "add";
     var task = isAdd ? null : state.tasks.find(function(t){ return t.id === m.taskId; });
     var isOwnTask = ROLE === "employee" && task && task.assigneeId === state.employeeViewer;
-    var fieldsEditable = isAdd || canEditFully();
+    var selfTask = isSelfAddedTask(task);
+    var isEmployeeAdd = isAdd && ROLE === "employee";
+    var fieldsEditable = isAdd || canEditFully() || selfTask;
     var disabledAttr = fieldsEditable ? "" : " disabled";
 
     var assigneePool = isAdd ? assignableMembers() : state.team;
@@ -1070,9 +1073,11 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       var sel = task && task.assigneeId === mem.id ? " selected" : "";
       return '<option value="' + mem.id + '"' + sel + '>' + escapeHtml(mem.name) + '</option>';
     }).join("");
-    var assigneeFieldHtml = isAdd
-      ? '<div class="field"><label for="f-assignees">Assign to</label><select id="f-assignees" multiple size="' + Math.max(2, Math.min(6, assigneePool.length)) + '">' + assigneeOpts + '</select><p class="section-hint" style="margin-top:4px;">Ctrl/Cmd-click to select more than one — a separate copy of this task is created for each person, so everyone tracks their own status.</p></div>'
-      : '<div class="field"><label for="f-assignee">Assignee</label><select id="f-assignee"' + disabledAttr + '>' + assigneeOpts + '</select></div>';
+    var assigneeFieldHtml = isEmployeeAdd
+      ? ""
+      : (isAdd
+        ? '<div class="field"><label for="f-assignees">Assign to</label><select id="f-assignees" multiple size="' + Math.max(2, Math.min(6, assigneePool.length)) + '">' + assigneeOpts + '</select><p class="section-hint" style="margin-top:4px;">Ctrl/Cmd-click to select more than one — a separate copy of this task is created for each person, so everyone tracks their own status.</p></div>'
+        : '<div class="field"><label for="f-assignee">Assignee</label><select id="f-assignee"' + disabledAttr + '>' + assigneeOpts + '</select></div>');
     var categoryOpts = CATEGORIES.map(function(c){
       var sel = (task ? task.category === c : c === CATEGORIES[0]) ? " selected" : "";
       return '<option value="' + c + '"' + sel + '>' + c + '</option>';
@@ -1086,8 +1091,8 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       ? m.notes.map(function(n){ return '<div class="note-item"><div class="note-date">' + formatDate(n.date) + '</div>' + escapeHtml(n.text) + '</div>'; }).join("")
       : '<p class="section-hint" style="margin:0;">No notes yet.</p>';
 
-    var canDelete = !isAdd && ROLE === "admin";
-    var canSave = isAdd ? canEditFully() : (canEditFully() || isOwnTask);
+    var canDelete = !isAdd && (ROLE === "admin" || selfTask);
+    var canSave = isAdd ? true : (canEditFully() || isOwnTask);
     var initialStart = task ? task.startDate : todayISO();
     var initialEnd = task ? task.endDate : todayISO();
     var initialStatus = task ? task.status : "Not Started";
@@ -1139,13 +1144,36 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     if(endVal < startVal){ endVal = startVal; showToast("End date adjusted to match start date."); }
 
     if(m.mode === "add"){
-      var assigneeSel = document.getElementById("f-assignees");
-      var assigneeIds = assigneeSel ? Array.prototype.map.call(assigneeSel.selectedOptions, function(o){ return o.value; }) : [];
-      if(!assigneeIds.length){ showToast("Pick at least one person to assign this to."); return; }
-      var assignedBy = ROLE === "manager" ? { type:"manager", id: state.managerViewer } : (ROLE === "admin" ? { type:"admin", id:null } : null);
       var desc = document.getElementById("f-desc").value.trim();
       var category = document.getElementById("f-category").value;
       var sharedNotes = m.notes;
+
+      if(ROLE === "employee"){
+        state.tasks.push({
+          id: uid("t"),
+          title: title,
+          description: desc,
+          assigneeId: state.employeeViewer,
+          category: category,
+          status: status,
+          startDate: startVal,
+          endDate: endVal,
+          createdDate: todayISO(),
+          completedDate: status === "Completed" ? todayISO() : null,
+          notes: sharedNotes.slice(),
+          assignedBy: { type: "self", id: state.employeeViewer }
+        });
+        showToast("Task added.");
+        closeModal();
+        render();
+        persist();
+        return;
+      }
+
+      var assigneeSel = document.getElementById("f-assignees");
+      var assigneeIds = assigneeSel ? Array.prototype.map.call(assigneeSel.selectedOptions, function(o){ return o.value; }) : [];
+      if(!assigneeIds.length){ showToast("Pick at least one person to assign this to."); return; }
+      var assignedBy = ROLE === "manager" ? { type:"manager", id: state.managerViewer } : { type:"admin", id:null };
       assigneeIds.forEach(function(assigneeId){
         state.tasks.push({
           id: uid("t"),
