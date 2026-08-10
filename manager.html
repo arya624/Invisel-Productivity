@@ -337,7 +337,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
   function memberName(id){ var m = getMember(id); return m ? m.name : "Unassigned"; }
   function isManagerId(id){ var m = getMember(id); return !!(m && m.isManager); }
   function managers(){ return state.team.filter(function(m){ return m.isManager; }); }
-  function reporteesOf(managerId){ return state.team.filter(function(m){ return !m.isManager && m.managerId === managerId; }); }
+  function reporteesOf(managerId){ return state.team.filter(function(m){ return !m.isManager && (m.managerIds || []).indexOf(managerId) !== -1; }); }
   function assignedByLabel(t){
     if(!t.assignedBy) return null;
     if(t.assignedBy.type === "admin") return "Admin";
@@ -349,7 +349,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     return !!(t && t.assignedBy && t.assignedBy.type === "self" && ROLE === "employee" && t.assigneeId === state.employeeViewer);
   }
   function assignableMembers(){
-    if(ROLE === "manager") return reporteesOf(state.managerViewer);
+    if(ROLE === "manager") return state.team.filter(function(m){ return !m.isManager; });
     return state.team;
   }
   function showToast(msg){
@@ -364,11 +364,11 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
   // ---------- seed data (local demo mode only) ----------
   function seedTeam(){
     return [
-      { id:"mgr1", name:"Manager 1", isManager:true, managerId:null, pin:"1111" },
-      { id:"mgr2", name:"Manager 2", isManager:true, managerId:null, pin:"2222" },
-      { id:"tm1", name:"Team Member 1", isManager:false, managerId:"mgr1", pin:"1001" },
-      { id:"tm2", name:"Team Member 2", isManager:false, managerId:"mgr1", pin:"1002" },
-      { id:"tm3", name:"Team Member 3", isManager:false, managerId:"mgr2", pin:"1003" }
+      { id:"mgr1", name:"Manager 1", isManager:true, managerIds:[], pin:"1111" },
+      { id:"mgr2", name:"Manager 2", isManager:true, managerIds:[], pin:"2222" },
+      { id:"tm1", name:"Team Member 1", isManager:false, managerIds:["mgr1"], pin:"1001" },
+      { id:"tm2", name:"Team Member 2", isManager:false, managerIds:["mgr1","mgr2"], pin:"1002" },
+      { id:"tm3", name:"Team Member 3", isManager:false, managerIds:["mgr2"], pin:"1003" }
     ];
   }
   function seedTasks(){
@@ -391,7 +391,8 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
   function normalizeTeam(team){
     return (team || []).map(function(m){
       var isMgr = !!m.isManager;
-      return { id: m.id, name: m.name, isManager: isMgr, managerId: isMgr ? null : (m.managerId || null), pin: m.pin || "0000" };
+      var managerIds = isMgr ? [] : (m.managerIds && m.managerIds.length ? m.managerIds : (m.managerId ? [m.managerId] : []));
+      return { id: m.id, name: m.name, isManager: isMgr, managerIds: managerIds, pin: m.pin || "0000" };
     });
   }
   function normalizeTasks(tasks){
@@ -825,13 +826,16 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
 
   // ---------- roster (Admin only) ----------
   function rosterCard(m){
-    var otherManagers = state.team.filter(function(x){ return x.isManager && x.id !== m.id; });
-    var reportsOpts = '<option value="">No manager</option>' + otherManagers.map(function(mg){
-      return '<option value="' + mg.id + '"' + (m.managerId === mg.id ? " selected" : "") + '>' + escapeHtml(mg.name) + '</option>';
+    var allManagers = state.team.filter(function(x){ return x.isManager; });
+    var myManagerIds = m.managerIds || [];
+    var reportsOpts = allManagers.map(function(mg){
+      return '<option value="' + mg.id + '"' + (myManagerIds.indexOf(mg.id) !== -1 ? " selected" : "") + '>' + escapeHtml(mg.name) + '</option>';
     }).join("");
     var bottom = m.isManager
       ? '<span class="section-hint">Manages ' + reporteesOf(m.id).length + ' ' + (reporteesOf(m.id).length === 1 ? "person" : "people") + '</span>'
-      : '<span>Reports to</span><select data-action="set-reports-to" data-id="' + m.id + '">' + reportsOpts + '</select>';
+      : (allManagers.length
+        ? '<span>Reports to</span><select multiple size="' + Math.min(3, allManagers.length) + '" title="Ctrl/Cmd-click to select more than one" data-action="set-reports-to" data-id="' + m.id + '">' + reportsOpts + '</select>'
+        : '<span class="section-hint">No managers set up yet</span>');
     return '' +
       '<div class="roster-card">' +
         '<div class="roster-card-top">' +
@@ -945,7 +949,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
         '<div class="add-row">' +
           '<input type="text" id="new-member-name" placeholder="New team member name">' +
           '<label><input type="checkbox" id="new-member-manager"> Manager</label>' +
-          '<select id="new-member-reports-to"><option value="">No manager</option>' + mgrOpts + '</select>' +
+          '<select id="new-member-reports-to" multiple size="' + Math.min(3, Math.max(1, managers().length)) + '" title="Ctrl/Cmd-click to select more than one">' + mgrOpts + '</select>' +
           '<input type="text" id="new-member-pin" class="pin-input" inputmode="numeric" maxlength="6" placeholder="PIN" value="' + randomPin() + '">' +
           '<button class="btn btn-primary btn-sm" data-action="add-member">+ Add</button>' +
         '</div>' +
@@ -973,13 +977,23 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     if(!state.managerViewer || !isManagerId(state.managerViewer)) state.managerViewer = mgrs[0].id;
     var reportees = reporteesOf(state.managerViewer);
     var reporteeIds = reportees.map(function(m){ return m.id; });
-    var myTasks = state.tasks.filter(function(t){ return reporteeIds.indexOf(t.assigneeId) !== -1; });
+    // A manager sees tasks for their direct reportees, PLUS anything they've personally
+    // assigned to someone else — managers can assign across the whole team, not just
+    // their own reportees, so this keeps whatever they've delegated visible to them too.
+    var myTasks = state.tasks.filter(function(t){
+      return reporteeIds.indexOf(t.assigneeId) !== -1 ||
+        (t.assignedBy && t.assignedBy.type === "manager" && t.assignedBy.id === state.managerViewer);
+    });
+    var visiblePeopleIds = {};
+    myTasks.forEach(function(t){ if(t.assigneeId) visiblePeopleIds[t.assigneeId] = true; });
+    reporteeIds.forEach(function(id){ visiblePeopleIds[id] = true; });
+    var visiblePeople = state.team.filter(function(m){ return !m.isManager && visiblePeopleIds[m.id]; });
     var visible = sortTasks(applyFilters(myTasks));
     var stats = statsFor(myTasks);
 
     return '' +
       '<div class="who-am-i">Logged in as <strong>' + escapeHtml(memberName(state.managerViewer)) + '</strong></div>' +
-      (!reportees.length ? '<div class="banner" style="display:block;">No one reports to ' + escapeHtml(memberName(state.managerViewer)) + ' yet. Ask Admin to set this in the team roster.</div>' : "") +
+      (!reportees.length ? '<div class="banner" style="display:block;">No one reports directly to ' + escapeHtml(memberName(state.managerViewer)) + ' yet — you can still assign tasks to anyone on the team below.</div>' : "") +
       '<div class="stat-grid">' +
         statCard("Total tasks", stats.total, "") +
         statCard("Overdue", stats.overdue, stats.overdue ? "warn" : "") +
@@ -987,20 +1001,21 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
         statCard("Completed this week", stats.completedWeek, "ok") +
       '</div>' +
 
-      '<div class="section-head"><h2 class="section-title">Team tasks</h2>' + (reportees.length ? '<button class="btn btn-primary btn-sm" data-action="open-add-task">+ Add task</button>' : "") + '</div>' +
+      '<div class="section-head"><h2 class="section-title">Team tasks</h2><button class="btn btn-primary btn-sm" data-action="open-add-task">+ Add task</button></div>' +
+      '<p class="section-hint" style="margin:-10px 0 12px;">You can assign to anyone on the team, not just your direct reportees.</p>' +
       viewToggle() +
-      (state.viewMode === "list" ? filterBar(true, reportees) : "") +
+      (state.viewMode === "list" ? filterBar(true, visiblePeople) : "") +
       (state.viewMode === "calendar"
         ? calendarView(myTasks)
-        : '<div class="task-list">' + (visible.length ? visible.map(function(t){ return taskCard(t); }).join("") : emptyState("No tasks match", reportees.length ? "Try adjusting the filters above." : "Nothing to show yet.")) + '</div>') +
+        : '<div class="task-list">' + (visible.length ? visible.map(function(t){ return taskCard(t); }).join("") : emptyState("No tasks match", "Try adding a task, or adjusting the filters above.")) + '</div>') +
 
       '<div class="section-head"><h2 class="section-title">Monthly performance</h2><span class="section-hint">Your team, for the month shown</span></div>' +
       '<div class="panel">' + monthlyPanel(myTasks) + '</div>' +
-      '<div class="panel" style="margin-top:14px;"><h3>By person</h3>' + monthlyBreakdownTable(reportees, myTasks) + '</div>' +
+      '<div class="panel" style="margin-top:14px;"><h3>By person</h3>' + monthlyBreakdownTable(visiblePeople, myTasks) + '</div>' +
 
       '<div class="section-head"><h2 class="section-title">Insights</h2></div>' +
       '<div class="panel"><h3>Priority mix (auto, from end dates)</h3>' + priorityBreakdownBars(myTasks) + '</div>' +
-      '<div class="panel"><h3>Workload by person</h3>' + workloadTable(reportees, myTasks) + '</div>';
+      '<div class="panel"><h3>Workload by person</h3>' + workloadTable(visiblePeople, myTasks) + '</div>';
   }
 
   function renderEmployee(){
@@ -1091,7 +1106,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       ? m.notes.map(function(n){ return '<div class="note-item"><div class="note-date">' + formatDate(n.date) + '</div>' + escapeHtml(n.text) + '</div>'; }).join("")
       : '<p class="section-hint" style="margin:0;">No notes yet.</p>';
 
-    var canDelete = !isAdd && (ROLE === "admin" || selfTask);
+    var canDelete = !isAdd && (ROLE === "admin" || ROLE === "manager" || selfTask);
     var canSave = isAdd ? true : (canEditFully() || isOwnTask);
     var initialStart = task ? task.startDate : todayISO();
     var initialEnd = task ? task.endDate : todayISO();
@@ -1292,10 +1307,11 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       var name = nameInput.value.trim();
       if(!name) return;
       var isMgr = document.getElementById("new-member-manager").checked;
-      var reportsTo = document.getElementById("new-member-reports-to").value;
+      var reportsToSel = document.getElementById("new-member-reports-to");
+      var reportsTo = reportsToSel ? Array.prototype.map.call(reportsToSel.selectedOptions, function(o){ return o.value; }) : [];
       var pinInput = document.getElementById("new-member-pin");
       var newPin = (pinInput.value || "").replace(/[^0-9]/g, "").slice(0, 6) || randomPin();
-      state.team.push({ id: uid("tm"), name: name, isManager: isMgr, managerId: isMgr ? null : (reportsTo || null), pin: newPin });
+      state.team.push({ id: uid("tm"), name: name, isManager: isMgr, managerIds: isMgr ? [] : reportsTo, pin: newPin });
       render();
       persist();
       return;
@@ -1303,7 +1319,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     if(action === "remove-member"){
       var id = el.getAttribute("data-id");
       state.team = state.team.filter(function(mem){ return mem.id !== id; });
-      state.team.forEach(function(mem){ if(mem.managerId === id) mem.managerId = null; });
+      state.team.forEach(function(mem){ if(mem.managerIds) mem.managerIds = mem.managerIds.filter(function(x){ return x !== id; }); });
       state.tasks.forEach(function(t){ if(t.assigneeId === id) t.assigneeId = null; });
       render();
       persist();
@@ -1365,7 +1381,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       var mem2 = getMember(mid2);
       if(mem2){
         mem2.isManager = t.checked;
-        if(mem2.isManager) mem2.managerId = null;
+        if(mem2.isManager) mem2.managerIds = [];
         render();
         persist();
       }
@@ -1374,7 +1390,10 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     if(t.matches("[data-action='set-reports-to']")){
       var mid3 = t.getAttribute("data-id");
       var mem3 = getMember(mid3);
-      if(mem3){ mem3.managerId = t.value || null; render(); persist(); }
+      if(mem3){
+        mem3.managerIds = Array.prototype.map.call(t.selectedOptions, function(o){ return o.value; });
+        render(); persist();
+      }
       return;
     }
     if(t.matches("[data-action='set-pin']")){
