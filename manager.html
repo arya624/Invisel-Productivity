@@ -1327,7 +1327,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
 
     root.innerHTML = '' +
       '<div class="modal-overlay" data-action="overlay-close">' +
-        '<div class="modal" onclick="event.stopPropagation()">' +
+        '<div class="modal">' +
           '<div class="modal-head"><h3 class="modal-title">' + (isAdd ? "New task" : "Task details") + '</h3><button class="btn btn-ghost btn-sm" data-action="close-modal">Close</button></div>' +
           (assignedByText ? '<p class="section-hint" style="margin:-8px 0 12px;">Assigned by ' + escapeHtml(assignedByText) + '</p>' : "") +
           '<div class="field"><label for="f-title">Title</label><input type="text" id="f-title" value="' + escapeHtml(task ? task.title : "") + '"' + disabledAttr + '></div>' +
