@@ -1421,10 +1421,13 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     } else {
       var task = state.tasks.find(function(t){ return t.id === m.taskId; });
       if(!task) return;
-      if(canEditFully()){
+      var savingSelfTask = isSelfAddedTask(task);
+      if(canEditFully() || savingSelfTask){
         task.title = title;
         task.description = document.getElementById("f-desc").value.trim();
-        task.assigneeId = document.getElementById("f-assignee").value || null;
+        if(canEditFully()){
+          task.assigneeId = document.getElementById("f-assignee").value || null;
+        }
         task.category = document.getElementById("f-category").value;
         task.startDate = startVal;
         task.endDate = endVal;
@@ -1686,9 +1689,18 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     }
   }
 
-  document.body.addEventListener("click", handleClick);
-  document.body.addEventListener("change", handleChange);
-  document.body.addEventListener("keydown", handleKeydown);
+  function safeHandler(fn){
+    return function(e){
+      try{
+        fn(e);
+      }catch(err){
+        window.alert("Something went wrong:\n\n" + err.message + "\n\nPlease screenshot this exact popup and send it over.");
+      }
+    };
+  }
+  document.body.addEventListener("click", safeHandler(handleClick));
+  document.body.addEventListener("change", safeHandler(handleChange));
+  document.body.addEventListener("keydown", safeHandler(handleKeydown));
 
   function render(){ renderView(); }
 
