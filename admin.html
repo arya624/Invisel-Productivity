@@ -626,6 +626,24 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     var n = name.trim().toLowerCase();
     return state.team.find(function(m){ return !m.isManager && m.name.trim().toLowerCase() === n; }) || null;
   }
+  function pad2(n){ n = String(n); return n.length < 2 ? "0" + n : n; }
+  function parseFlexibleDate(str){
+    if(!str) return null;
+    str = String(str).trim();
+    var iso = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if(iso){
+      var y1 = iso[1], m1 = parseInt(iso[2], 10), d1 = parseInt(iso[3], 10);
+      if(m1 >= 1 && m1 <= 12 && d1 >= 1 && d1 <= 31) return y1 + "-" + pad2(m1) + "-" + pad2(d1);
+      return null;
+    }
+    // Day-first: DD-MM-YYYY or DD/MM/YYYY (matches how dates display in this app and in Indian spreadsheets)
+    var dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if(dmy){
+      var d2 = parseInt(dmy[1], 10), m2 = parseInt(dmy[2], 10), y2 = dmy[3];
+      if(m2 >= 1 && m2 <= 12 && d2 >= 1 && d2 <= 31) return y2 + "-" + pad2(m2) + "-" + pad2(d2);
+    }
+    return null;
+  }
   function runImport(text){
     var delim = detectDelimiter(text);
     var rows = parseDelimited(text.trim(), delim);
@@ -654,8 +672,14 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       if(!member){ errors.push("Row " + (rowIdx + 2) + ": assignee \"" + assigneeName + "\" not found, skipped."); return; }
       var category = catIdx !== -1 && CATEGORIES.indexOf((r[catIdx] || "").trim()) !== -1 ? r[catIdx].trim() : "Other";
       var status = statusIdx !== -1 && STATUSES.indexOf((r[statusIdx] || "").trim()) !== -1 ? r[statusIdx].trim() : "Not Started";
-      var start = startIdx !== -1 && /^\d{4}-\d{2}-\d{2}$/.test((r[startIdx] || "").trim()) ? r[startIdx].trim() : todayISO();
-      var end = endIdx !== -1 && /^\d{4}-\d{2}-\d{2}$/.test((r[endIdx] || "").trim()) ? r[endIdx].trim() : start;
+      var startRaw = startIdx !== -1 ? (r[startIdx] || "").trim() : "";
+      var start = startRaw ? parseFlexibleDate(startRaw) : null;
+      if(startRaw && !start){ errors.push("Row " + (rowIdx + 2) + ": couldn't understand start date \"" + startRaw + "\" — used today instead. Use YYYY-MM-DD or DD-MM-YYYY."); }
+      if(!start) start = todayISO();
+      var endRaw = endIdx !== -1 ? (r[endIdx] || "").trim() : "";
+      var end = endRaw ? parseFlexibleDate(endRaw) : null;
+      if(endRaw && !end){ errors.push("Row " + (rowIdx + 2) + ": couldn't understand end date \"" + endRaw + "\" — used start date instead. Use YYYY-MM-DD or DD-MM-YYYY."); }
+      if(!end) end = start;
       if(end < start) end = start;
       var desc = descIdx !== -1 ? (r[descIdx] || "").trim() : "";
       var idVal = idIdx !== -1 ? (r[idIdx] || "").trim() : "";
@@ -1368,7 +1392,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     var status = document.getElementById("f-status").value;
     var startVal = document.getElementById("f-start").value || todayISO();
     var endVal = document.getElementById("f-end").value || startVal;
-    if(endVal < startVal){ endVal = startVal; showToast("End date adjusted to match start date."); }
+    if(endVal < startVal){ startVal = endVal; showToast("Start date adjusted to match the new end date."); }
 
     if(m.mode === "add"){
       var desc = document.getElementById("f-desc").value.trim();
