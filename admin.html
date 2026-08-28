@@ -1689,12 +1689,22 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     }
   }
 
+  function showFatalError(msg){
+    var el = document.getElementById("fatal-error-box");
+    if(!el){
+      el = document.createElement("div");
+      el.id = "fatal-error-box";
+      el.style.cssText = "position:fixed;top:10px;left:10px;right:10px;z-index:99999;background:#B5432E;color:#fff;padding:16px 18px;border-radius:10px;font-family:monospace;font-size:13px;white-space:pre-wrap;box-shadow:0 8px 24px rgba(0,0,0,0.35);max-height:60vh;overflow:auto;";
+      document.body.appendChild(el);
+    }
+    el.textContent = "ERROR CAUGHT — screenshot this whole box and send it:\n\n" + msg;
+  }
   function safeHandler(fn){
     return function(e){
       try{
         fn(e);
       }catch(err){
-        window.alert("Something went wrong:\n\n" + err.message + "\n\nPlease screenshot this exact popup and send it over.");
+        showFatalError((err && err.message ? err.message : String(err)) + (err && err.stack ? "\n\n" + err.stack : ""));
       }
     };
   }
