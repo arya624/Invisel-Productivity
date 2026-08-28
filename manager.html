@@ -162,6 +162,17 @@ table.workload tr:last-child td{ border-bottom:none; }
 .login-wrap{ display:flex; justify-content:center; padding-top:8vh; }
 .login-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:28px; width:100%; max-width:340px; box-shadow:0 12px 30px rgba(0,0,0,0.06); }
 .login-error{ color:var(--high); font-size:12.5px; margin:8px 0 0; }
+.login-name-grid{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+.login-name-btn{ border:1px solid var(--border); background:var(--surface-alt); padding:9px 14px; border-radius:9px; font-weight:600; font-size:13.5px; cursor:pointer; transition:border-color .15s ease, background .15s ease, color .15s ease; }
+.login-name-btn:hover{ border-color:var(--accent); }
+.login-name-btn.selected{ background:var(--ink); color:#fff; border-color:var(--ink); }
+.field input:disabled + .login-error{ display:none; }
+.task-select{ flex-shrink:0; }
+.import-result{ margin-top:12px; padding:10px 12px; background:var(--surface-alt); border-radius:8px; font-size:12.5px; }
+.import-errors{ margin:8px 0 0; padding-left:18px; color:var(--high); }
+.import-errors li{ margin-bottom:3px; }
+.link-btn{ background:none; border:none; padding:0; color:var(--accent); font-weight:600; cursor:pointer; text-decoration:underline; font-size:inherit; font-family:inherit; }
+.link-btn:hover{ color:var(--accent-dark); }
 .pin-input{ width:64px; border:1px solid var(--border); border-radius:7px; padding:5px 8px; font-size:12.5px; font-family:var(--font-mono); background:var(--surface-alt); letter-spacing:0.05em; }
 
 .view-toggle{ margin-bottom:14px; }
@@ -255,6 +266,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
   var ROLE = document.body.getAttribute("data-role"); // "admin" | "manager" | "employee"
 
   var CATEGORIES = ["Marketing","Finance","E-commerce","Brand","R&D","Operations","Other"];
+  var DEPARTMENTS = ["Marketing","Finance","E-commerce","Brand","R&D","Operations","Other"];
   var PRIORITIES = ["High","Medium","Low"];
   var STATUSES = ["Not Started","In Progress","Completed","Blocked"];
 
@@ -262,6 +274,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
   var PRIORITY_RULES = { highWithinDays: 2, mediumWithinDays: 7 };
   var UPCOMING_DAYS = 14;
   var POLL_MS = 20000;
+  var IMPORT_HEADERS = ["TaskID","Title","Description","Assignee","Category","Status","StartDate","EndDate"];
 
   // Admin PIN — change this before sharing the file. This is a UX gate, not
   // real security: this is a static site with a publicly-readable backend,
@@ -280,14 +293,18 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     managerViewer: null,
     tasks: [],
     team: [],
-    filters: { assignee: "all", priority: "all", status: "all", category: "all" },
+    filters: { assignee: "all", priority: "all", status: "all", category: "all", department: "all" },
     modal: null,
     loading: true,
     loggedIn: false,
     loginError: null,
+    loginSelectedId: null,
     viewMode: "list", // "list" | "calendar"
     calendar: { year: today.getFullYear(), month: today.getMonth(), selectedDay: null },
-    monthReview: { year: today.getFullYear(), month: today.getMonth() }
+    monthReview: { year: today.getFullYear(), month: today.getMonth() },
+    selectedIds: {},
+    lastVisibleIds: [],
+    importResult: null
   };
 
   // ---------- utils ----------
@@ -361,29 +378,14 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     showToast._t = setTimeout(function(){ el.classList.remove("show"); }, 2600);
   }
 
-  // ---------- seed data (local demo mode only) ----------
+  // ---------- seed data (local demo mode only — team placeholders, no dummy tasks) ----------
   function seedTeam(){
     return [
-      { id:"mgr1", name:"Manager 1", isManager:true, managerIds:[], pin:"1111" },
-      { id:"mgr2", name:"Manager 2", isManager:true, managerIds:[], pin:"2222" },
-      { id:"tm1", name:"Team Member 1", isManager:false, managerIds:["mgr1"], pin:"1001" },
-      { id:"tm2", name:"Team Member 2", isManager:false, managerIds:["mgr1","mgr2"], pin:"1002" },
-      { id:"tm3", name:"Team Member 3", isManager:false, managerIds:["mgr2"], pin:"1003" }
-    ];
-  }
-  function seedTasks(){
-    var t = todayDate();
-    var byMgr1 = { type:"manager", id:"mgr1" };
-    var byMgr2 = { type:"manager", id:"mgr2" };
-    var byAdmin = { type:"admin", id:null };
-    return [
-      { id:uid("t"), title:"Amazon listing copy refresh — 7 SKUs", description:"Update titles, bullets and A+ copy for all live SKUs.", assigneeId:"tm1", category:"Marketing", status:"In Progress", startDate:toISO(addDays(t,-1)), endDate:toISO(addDays(t,2)), createdDate:todayISO(), completedDate:null, notes:[], assignedBy:byMgr1 },
-      { id:uid("t"), title:"August MIS — CM1/CM2/CM3 update", description:"Roll up daily actuals into the monthly income statement.", assigneeId:"tm2", category:"Finance", status:"Not Started", startDate:toISO(addDays(t,1)), endDate:toISO(addDays(t,5)), createdDate:todayISO(), completedDate:null, notes:[], assignedBy:byMgr1 },
-      { id:uid("t"), title:"Restock check — Gokwik channel", description:"Confirm live inventory vs modeled stock before next ad push.", assigneeId:"tm1", category:"E-commerce", status:"Not Started", startDate:toISO(addDays(t,-4)), endDate:toISO(addDays(t,-2)), createdDate:todayISO(), completedDate:null, notes:[], assignedBy:byMgr1 },
-      { id:uid("t"), title:"Brand guideline PDF — finalize typography", description:"Lock Helvetica/Poppins usage rules before logo files ship.", assigneeId:"tm3", category:"Brand", status:"Completed", startDate:toISO(addDays(t,-8)), endDate:toISO(addDays(t,-6)), createdDate:todayISO(), completedDate:toISO(addDays(t,-1)), notes:[], assignedBy:byMgr2 },
-      { id:uid("t"), title:"Sol-gel coating vendor shortlist", description:"Compare Indian suppliers for deposition equipment.", assigneeId:"tm3", category:"R&D", status:"In Progress", startDate:toISO(addDays(t,2)), endDate:toISO(addDays(t,12)), createdDate:todayISO(), completedDate:null, notes:[], assignedBy:byMgr2 },
-      { id:uid("t"), title:"PSI subsidy application docs", description:"Compile documents for Maharashtra PSI capex subsidy filing.", assigneeId:"tm2", category:"Operations", status:"Blocked", startDate:toISO(addDays(t,-5)), endDate:toISO(addDays(t,-1)), createdDate:todayISO(), completedDate:null, notes:[{ text:"Waiting on CA for signed financials.", date:todayISO() }], assignedBy:byAdmin },
-      { id:uid("t"), title:"Meta ad creative — cleaning bundle", description:"New creative set for the bundle launch push.", assigneeId:"tm1", category:"Marketing", status:"Not Started", startDate:toISO(addDays(t,1)), endDate:toISO(addDays(t,3)), createdDate:todayISO(), completedDate:null, notes:[], assignedBy:byMgr1 }
+      { id:"mgr1", name:"Manager 1", isManager:true, managerIds:[], pin:"1111", department:"Operations" },
+      { id:"mgr2", name:"Manager 2", isManager:true, managerIds:[], pin:"2222", department:"Marketing" },
+      { id:"tm1", name:"Team Member 1", isManager:false, managerIds:["mgr1"], pin:"1001", department:"Marketing" },
+      { id:"tm2", name:"Team Member 2", isManager:false, managerIds:["mgr1","mgr2"], pin:"1002", department:"Finance" },
+      { id:"tm3", name:"Team Member 3", isManager:false, managerIds:["mgr2"], pin:"1003", department:"E-commerce" }
     ];
   }
 
@@ -392,7 +394,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     return (team || []).map(function(m){
       var isMgr = !!m.isManager;
       var managerIds = isMgr ? [] : (m.managerIds && m.managerIds.length ? m.managerIds : (m.managerId ? [m.managerId] : []));
-      return { id: m.id, name: m.name, isManager: isMgr, managerIds: managerIds, pin: m.pin || "0000" };
+      return { id: m.id, name: m.name, isManager: isMgr, managerIds: managerIds, pin: m.pin || "0000", department: m.department || "Other" };
     });
   }
   function normalizeTasks(tasks){
@@ -446,26 +448,25 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       showBanner("Running in local demo mode — changes here won't be saved. Check <code>config.js</code>.", false);
       setSyncStatus("warn", "Local demo mode");
       state.team = normalizeTeam(seedTeam());
-      state.tasks = normalizeTasks(seedTasks());
+      state.tasks = [];
       afterLoad();
       return;
     }
     setSyncStatus("", "Connecting…");
     apiFetchState().then(function(data){
       var hasTeam = data && data.team && data.team.length;
-      var hasTasks = data && data.tasks && data.tasks.length;
       state.team = normalizeTeam(hasTeam ? data.team : seedTeam());
-      state.tasks = normalizeTasks(hasTasks ? data.tasks : seedTasks());
+      state.tasks = normalizeTasks(data && data.tasks ? data.tasks : []);
       setSyncStatus("ok", "Backend connected");
       afterLoad();
-      if(!hasTeam || !hasTasks){
+      if(!hasTeam){
         apiSaveState({ tasks: state.tasks, team: state.team });
       }
     }).catch(function(){
       showBanner("Couldn't reach the backend. Check that the Apps Script is deployed with access set to \"Anyone\". Showing local sample data for now.", true);
       setSyncStatus("off", "Offline");
       state.team = normalizeTeam(seedTeam());
-      state.tasks = normalizeTasks(seedTasks());
+      state.tasks = [];
       afterLoad();
     });
   }
@@ -582,11 +583,165 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       if(f.priority !== "all" && computePriority(t) !== f.priority) return false;
       if(f.status !== "all" && t.status !== f.status) return false;
       if(f.category !== "all" && t.category !== f.category) return false;
+      if(f.department !== "all"){
+        var owner = getMember(t.assigneeId);
+        if(!owner || (owner.department || "Other") !== f.department) return false;
+      }
       return true;
     });
   }
   function tasksOnDay(tasks, iso){
     return tasks.filter(function(t){ return t.startDate <= iso && iso <= t.endDate; });
+  }
+
+  // ---------- CSV / spreadsheet bulk import & export ----------
+  function detectDelimiter(text){
+    var firstLine = text.split(/\r?\n/)[0] || "";
+    var tabs = (firstLine.match(/\t/g) || []).length;
+    var commas = (firstLine.match(/,/g) || []).length;
+    return tabs > commas ? "\t" : ",";
+  }
+  function parseDelimited(text, delim){
+    var rows = [], field = "", row = [], inQuotes = false, i = 0, len = text.length;
+    while(i < len){
+      var c = text[i];
+      if(inQuotes){
+        if(c === '"'){
+          if(text[i + 1] === '"'){ field += '"'; i += 2; continue; }
+          inQuotes = false; i++; continue;
+        }
+        field += c; i++; continue;
+      }
+      if(c === '"'){ inQuotes = true; i++; continue; }
+      if(c === delim){ row.push(field); field = ""; i++; continue; }
+      if(c === "\r"){ i++; continue; }
+      if(c === "\n"){ row.push(field); rows.push(row); row = []; field = ""; i++; continue; }
+      field += c; i++;
+    }
+    if(field.length || row.length){ row.push(field); rows.push(row); }
+    return rows.filter(function(r){ return !(r.length === 1 && r[0].trim() === ""); });
+  }
+  function findMemberByName(name){
+    if(!name) return null;
+    var n = name.trim().toLowerCase();
+    return state.team.find(function(m){ return !m.isManager && m.name.trim().toLowerCase() === n; }) || null;
+  }
+  function runImport(text){
+    var delim = detectDelimiter(text);
+    var rows = parseDelimited(text.trim(), delim);
+    if(!rows.length) return { added: 0, updated: 0, errors: ["No data found — paste rows or choose a file first."] };
+    var header = rows[0].map(function(h){ return h.trim(); });
+    var dataRows = rows.slice(1);
+    var idIdx = header.indexOf("TaskID");
+    var titleIdx = header.indexOf("Title");
+    var descIdx = header.indexOf("Description");
+    var assigneeIdx = header.indexOf("Assignee");
+    var catIdx = header.indexOf("Category");
+    var statusIdx = header.indexOf("Status");
+    var startIdx = header.indexOf("StartDate");
+    var endIdx = header.indexOf("EndDate");
+    if(titleIdx === -1 || assigneeIdx === -1){
+      return { added: 0, updated: 0, errors: ["Header row must include at least Title and Assignee columns — check against the template."] };
+    }
+    var added = 0, updated = 0, errors = [];
+    var assignedByVal = ROLE === "manager" ? { type:"manager", id: state.managerViewer } : { type:"admin", id:null };
+    dataRows.forEach(function(r, rowIdx){
+      if(!r.some(function(c){ return c && c.trim(); })) return;
+      var title = titleIdx !== -1 ? (r[titleIdx] || "").trim() : "";
+      if(!title){ errors.push("Row " + (rowIdx + 2) + ": missing Title, skipped."); return; }
+      var assigneeName = assigneeIdx !== -1 ? (r[assigneeIdx] || "").trim() : "";
+      var member = findMemberByName(assigneeName);
+      if(!member){ errors.push("Row " + (rowIdx + 2) + ": assignee \"" + assigneeName + "\" not found, skipped."); return; }
+      var category = catIdx !== -1 && CATEGORIES.indexOf((r[catIdx] || "").trim()) !== -1 ? r[catIdx].trim() : "Other";
+      var status = statusIdx !== -1 && STATUSES.indexOf((r[statusIdx] || "").trim()) !== -1 ? r[statusIdx].trim() : "Not Started";
+      var start = startIdx !== -1 && /^\d{4}-\d{2}-\d{2}$/.test((r[startIdx] || "").trim()) ? r[startIdx].trim() : todayISO();
+      var end = endIdx !== -1 && /^\d{4}-\d{2}-\d{2}$/.test((r[endIdx] || "").trim()) ? r[endIdx].trim() : start;
+      if(end < start) end = start;
+      var desc = descIdx !== -1 ? (r[descIdx] || "").trim() : "";
+      var idVal = idIdx !== -1 ? (r[idIdx] || "").trim() : "";
+      var existing = idVal ? state.tasks.find(function(t){ return t.id === idVal; }) : null;
+      if(existing){
+        existing.title = title;
+        existing.description = desc;
+        existing.assigneeId = member.id;
+        existing.category = category;
+        if(existing.status !== "Completed" && status === "Completed") existing.completedDate = todayISO();
+        if(status !== "Completed") existing.completedDate = null;
+        existing.status = status;
+        existing.startDate = start;
+        existing.endDate = end;
+        updated++;
+      } else {
+        state.tasks.push({
+          id: uid("t"), title: title, description: desc, assigneeId: member.id, category: category, status: status,
+          startDate: start, endDate: end, createdDate: todayISO(), completedDate: status === "Completed" ? todayISO() : null,
+          notes: [], assignedBy: assignedByVal
+        });
+        added++;
+      }
+    });
+    return { added: added, updated: updated, errors: errors };
+  }
+  function csvEscape(v){
+    v = String(v == null ? "" : v);
+    if(/["\n,]/.test(v)) v = '"' + v.replace(/"/g, '""') + '"';
+    return v;
+  }
+  function downloadTextFile(filename, text){
+    var blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+  function exportTasksCSV(tasksList){
+    var lines = [IMPORT_HEADERS.join(",")];
+    tasksList.forEach(function(t){
+      lines.push([t.id, t.title, t.description, memberName(t.assigneeId), t.category, t.status, t.startDate, t.endDate].map(csvEscape).join(","));
+    });
+    downloadTextFile("invisel-tasks-" + todayISO() + ".csv", lines.join("\r\n"));
+  }
+  function downloadImportTemplate(){
+    var lines = [
+      IMPORT_HEADERS.join(","),
+      ["", "Example task — replace this row", "Optional description", "Team Member 1", "Marketing", "Not Started", todayISO(), todayISO()].map(csvEscape).join(",")
+    ];
+    downloadTextFile("invisel-tasks-template.csv", lines.join("\r\n"));
+  }
+  function currentScopeTasks(){
+    if(ROLE === "admin") return state.tasks;
+    if(ROLE === "manager"){
+      var reporteeIds = reporteesOf(state.managerViewer).map(function(m){ return m.id; });
+      return state.tasks.filter(function(t){
+        return reporteeIds.indexOf(t.assigneeId) !== -1 ||
+          (t.assignedBy && t.assignedBy.type === "manager" && t.assignedBy.id === state.managerViewer);
+      });
+    }
+    return state.tasks.filter(function(t){ return t.assigneeId === state.employeeViewer; });
+  }
+  function importPanel(){
+    var resultHtml = "";
+    if(state.importResult){
+      var r = state.importResult;
+      resultHtml = '<div class="import-result">' +
+        '<strong>' + r.added + ' added, ' + r.updated + ' updated.</strong>' +
+        (r.errors.length ? '<ul class="import-errors">' + r.errors.map(function(e){ return '<li>' + escapeHtml(e) + '</li>'; }).join("") + '</ul>' : "") +
+        '</div>';
+    }
+    return '' +
+      '<div class="panel">' +
+        '<h3>Bulk import from spreadsheet</h3>' +
+        '<p class="section-hint" style="margin-bottom:10px;">Paste rows copied from your sheet, or choose a .csv file. Columns: <code>TaskID</code> (leave blank for new tasks, fill in to update an existing one), <code>Title</code>, <code>Description</code>, <code>Assignee</code> (exact name), <code>Category</code>, <code>Status</code>, <code>StartDate</code>, <code>EndDate</code> (YYYY-MM-DD).</p>' +
+        '<textarea id="import-text" rows="5" placeholder="Paste CSV or tab-separated rows here…" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 10px;font-family:var(--font-mono);font-size:12px;"></textarea>' +
+        '<div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">' +
+          '<input type="file" id="import-file" accept=".csv,text/csv" style="font-size:12.5px;max-width:220px;">' +
+          '<button class="btn btn-primary btn-sm" data-action="run-import" type="button">Import</button>' +
+          '<button class="btn btn-ghost btn-sm" data-action="export-tasks" type="button">Export current tasks (CSV)</button>' +
+          '<button class="btn btn-ghost btn-sm" data-action="download-template" type="button">Download template</button>' +
+        '</div>' +
+        resultHtml +
+      '</div>';
   }
 
   // ---------- templates ----------
@@ -620,8 +775,12 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       metaBits.push(memberName(t.assigneeId));
     }
     metaBits.push(t.category);
+    var checkboxHtml = opts.selectable
+      ? '<input type="checkbox" class="task-select" data-action="toggle-select" data-id="' + t.id + '" onclick="event.stopPropagation()"' + (state.selectedIds[t.id] ? " checked" : "") + '>'
+      : "";
     return '' +
       '<div class="task-card" data-action="open-task" data-id="' + t.id + '">' +
+        checkboxHtml +
         '<div class="task-main">' +
           '<p class="task-title">' + escapeHtml(t.title) + '</p>' +
           '<div class="task-meta">' + metaBits.map(function(m){ return '<span>' + escapeHtml(m) + '</span>'; }).join('<span>·</span>') + '</div>' +
@@ -631,10 +790,19 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
         '<select class="quick-status" data-action="quick-status" data-id="' + t.id + '" onclick="event.stopPropagation()">' + statusOptions + '</select>' +
       '</div>';
   }
+  function bulkControlsHtml(visibleIds){
+    state.lastVisibleIds = visibleIds;
+    var selectedCount = visibleIds.filter(function(id){ return state.selectedIds[id]; }).length;
+    var allSelected = visibleIds.length > 0 && selectedCount === visibleIds.length;
+    return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;">' +
+      '<label class="roster-check"><input type="checkbox" id="select-all-tasks"' + (allSelected ? " checked" : "") + '> Select all</label>' +
+      (selectedCount ? '<button class="btn btn-danger btn-sm" data-action="delete-selected" type="button">Delete selected (' + selectedCount + ')</button>' : "") +
+      '</div>';
+  }
   function emptyState(title, sub){
     return '<div class="empty-state"><strong>' + escapeHtml(title) + '</strong>' + escapeHtml(sub) + '</div>';
   }
-  function filterBar(includeAssignee, teamSubset){
+  function filterBar(includeAssignee, teamSubset, includeDepartment){
     var list = teamSubset || state.team;
     var assigneeOpts = '<option value="all">All people</option>' + list.map(function(m){
       return '<option value="' + m.id + '"' + (state.filters.assignee === m.id ? " selected" : "") + '>' + escapeHtml(m.name) + '</option>';
@@ -648,8 +816,12 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     var catOpts = '<option value="all">All categories</option>' + CATEGORIES.map(function(c){
       return '<option value="' + c + '"' + (state.filters.category === c ? " selected" : "") + '>' + c + '</option>';
     }).join("");
+    var deptOpts = '<option value="all">All departments</option>' + DEPARTMENTS.map(function(d){
+      return '<option value="' + d + '"' + (state.filters.department === d ? " selected" : "") + '>' + d + '</option>';
+    }).join("");
     return '<div class="filter-bar">' +
       (includeAssignee ? '<select data-filter="assignee">' + assigneeOpts + '</select>' : '') +
+      (includeDepartment ? '<select data-filter="department">' + deptOpts + '</select>' : '') +
       '<select data-filter="priority">' + priorityOpts + '</select>' +
       '<select data-filter="status">' + statusOpts + '</select>' +
       '<select data-filter="category">' + catOpts + '</select>' +
@@ -678,6 +850,9 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       return '<div class="bar-row"><span class="bar-label">' + c + '</span><div class="bar-track"><div class="bar-fill" style="width:' + (n/max*100) + '%;background:var(--accent)"></div></div><span class="bar-count">' + n + '</span></div>';
     }).join("") || '<p class="section-hint">No tasks yet.</p>';
   }
+  function personLinkHtml(m){
+    return '<button type="button" class="link-btn" data-action="filter-person" data-id="' + m.id + '">' + escapeHtml(m.name) + '</button>';
+  }
   function workloadTable(members, tasksList){
     members = members || state.team;
     tasksList = tasksList || state.tasks;
@@ -687,9 +862,9 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       var completed = mine.filter(function(t){ return t.status === "Completed"; }).length;
       var overdue = mine.filter(isOverdue).length;
       var rate = mine.length ? Math.round(completed / mine.length * 100) : 0;
-      return '<tr><td>' + escapeHtml(m.name) + '</td><td>' + mine.length + '</td><td>' + completed + '</td><td' + (overdue ? ' style="color:var(--high);font-weight:600;"' : '') + '>' + overdue + '</td><td>' + rate + '%</td></tr>';
+      return '<tr><td>' + personLinkHtml(m) + '</td><td>' + mine.length + '</td><td>' + completed + '</td><td' + (overdue ? ' style="color:var(--high);font-weight:600;"' : '') + '>' + overdue + '</td><td>' + rate + '%</td></tr>';
     }).join("");
-    return '<table class="workload"><thead><tr><th>Name</th><th>Assigned</th><th>Completed</th><th>Overdue</th><th>Completion</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    return '<table class="workload"><thead><tr><th>Name</th><th>Assigned</th><th>Completed</th><th>Overdue</th><th>Completion</th></tr></thead><tbody>' + rows + '</tbody></table><p class="section-hint" style="margin-top:8px;">Click a name to jump to their tasks.</p>';
   }
   function monthRangeIso(y, m){ return [isoFor(y, m, 1), isoFor(y, m + 1, 0)]; }
   function tasksInMonth(tasks, y, m){
@@ -735,9 +910,30 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     var rows = members.map(function(mem){
       var mine = tasksList.filter(function(t){ return t.assigneeId === mem.id; });
       var s = monthlyStats(mine, y, m);
-      return '<tr><td>' + escapeHtml(mem.name) + '</td><td>' + s.total + '</td><td>' + s.completed + '</td><td>' + s.completionRate + '%</td><td>' + s.onTimeRate + '%</td></tr>';
+      return '<tr><td>' + personLinkHtml(mem) + '</td><td>' + s.total + '</td><td>' + s.completed + '</td><td>' + s.completionRate + '%</td><td>' + s.onTimeRate + '%</td></tr>';
     }).join("");
     return '<table class="workload"><thead><tr><th>Name</th><th>Tasks due</th><th>Completed</th><th>Completion</th><th>On-time</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+  function departmentBreakdownTable(){
+    var employees = state.team.filter(function(m){ return !m.isManager; });
+    var byDept = {};
+    employees.forEach(function(m){
+      var d = m.department || "Other";
+      byDept[d] = byDept[d] || [];
+      byDept[d].push(m);
+    });
+    var depts = DEPARTMENTS.filter(function(d){ return byDept[d] && byDept[d].length; });
+    if(!depts.length) return '<p class="section-hint">No employees yet.</p>';
+    var rows = depts.map(function(d){
+      var people = byDept[d];
+      var ids = people.map(function(p){ return p.id; });
+      var deptTasks = state.tasks.filter(function(t){ return ids.indexOf(t.assigneeId) !== -1; });
+      var completed = deptTasks.filter(function(t){ return t.status === "Completed"; }).length;
+      var overdue = deptTasks.filter(isOverdue).length;
+      var rate = deptTasks.length ? Math.round(completed / deptTasks.length * 100) : 0;
+      return '<tr><td>' + escapeHtml(d) + '</td><td>' + people.length + '</td><td>' + deptTasks.length + '</td><td>' + completed + '</td><td' + (overdue ? ' style="color:var(--high);font-weight:600;"' : '') + '>' + overdue + '</td><td>' + rate + '%</td></tr>';
+    }).join("");
+    return '<table class="workload"><thead><tr><th>Department</th><th>People</th><th>Tasks</th><th>Completed</th><th>Overdue</th><th>Completion</th></tr></thead><tbody>' + rows + '</tbody></table>';
   }
   function showBanner(html, isError){
     var el = document.getElementById("banner");
@@ -831,6 +1027,9 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     var reportsOpts = allManagers.map(function(mg){
       return '<option value="' + mg.id + '"' + (myManagerIds.indexOf(mg.id) !== -1 ? " selected" : "") + '>' + escapeHtml(mg.name) + '</option>';
     }).join("");
+    var deptOpts = DEPARTMENTS.map(function(d){
+      return '<option value="' + d + '"' + (m.department === d ? " selected" : "") + '>' + d + '</option>';
+    }).join("");
     var bottom = m.isManager
       ? '<span class="section-hint">Manages ' + reporteesOf(m.id).length + ' ' + (reporteesOf(m.id).length === 1 ? "person" : "people") + '</span>'
       : (allManagers.length
@@ -845,6 +1044,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
         '<div class="roster-card-bottom">' +
           '<label class="roster-check"><input type="checkbox" data-action="toggle-manager" data-id="' + m.id + '"' + (m.isManager ? " checked" : "") + '> Manager</label>' +
           bottom +
+          '<span>Dept</span><select data-action="set-department" data-id="' + m.id + '">' + deptOpts + '</select>' +
           '<span>PIN</span><input type="text" class="pin-input" inputmode="numeric" maxlength="6" value="' + escapeHtml(m.pin || "") + '" data-action="set-pin" data-id="' + m.id + '">' +
         '</div>' +
       '</div>';
@@ -867,14 +1067,18 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
         emptyState(ROLE === "manager" ? "No managers set up yet" : "No team members yet", "Ask an Admin to set this up first.") +
         '</div></div>';
     }
-    var opts = pool.map(function(m){ return '<option value="' + m.id + '">' + escapeHtml(m.name) + '</option>'; }).join("");
+    var nameButtons = pool.map(function(m){
+      var sel = state.loginSelectedId === m.id;
+      return '<button type="button" class="login-name-btn' + (sel ? " selected" : "") + '" data-action="select-login-name" data-id="' + m.id + '">' + escapeHtml(m.name) + '</button>';
+    }).join("");
+    var hasSelection = !!state.loginSelectedId;
     return '<div class="login-wrap"><div class="login-card">' +
       '<h2 class="section-title" style="margin-bottom:4px;">' + (ROLE === "manager" ? "Manager" : "Employee") + ' login</h2>' +
-      '<p class="section-hint" style="margin-bottom:16px;">Pick your name and enter your PIN.</p>' +
-      '<div class="field"><label for="login-name">Your name</label><select id="login-name">' + opts + '</select></div>' +
-      '<div class="field"><label for="login-pin">PIN</label><input type="password" inputmode="numeric" id="login-pin"></div>' +
+      '<p class="section-hint" style="margin-bottom:12px;">Tap your name, then enter your PIN.</p>' +
+      '<div class="login-name-grid">' + nameButtons + '</div>' +
+      '<div class="field"><label for="login-pin">PIN</label><input type="password" inputmode="numeric" id="login-pin"' + (hasSelection ? "" : " disabled") + '></div>' +
       (state.loginError ? '<p class="login-error">' + escapeHtml(state.loginError) + '</p>' : "") +
-      '<button class="btn btn-primary" data-action="do-login" type="button" style="width:100%;margin-top:6px;">Log in</button>' +
+      '<button class="btn btn-primary" data-action="do-login" type="button" style="width:100%;margin-top:6px;"' + (hasSelection ? "" : " disabled") + '>Log in</button>' +
       '<p class="section-hint" style="margin-top:10px;">Forgot your PIN? Ask an Admin to look it up or reset it.</p>' +
       '</div></div>';
   }
@@ -892,13 +1096,12 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       }
       return;
     }
-    var nameEl = document.getElementById("login-name");
-    var id = nameEl ? nameEl.value : "";
+    var id = state.loginSelectedId || "";
     var mem = getMember(id);
     if(mem && pin && String(mem.pin || "") === pin){
       if(ROLE === "manager"){ state.managerViewer = id; lsSet("invisel_manager_id", id); }
       else { state.employeeViewer = id; lsSet("invisel_employee_id", id); }
-      state.loggedIn = true; state.loginError = null;
+      state.loggedIn = true; state.loginError = null; state.loginSelectedId = null;
       render();
     } else {
       state.loginError = "Name and PIN don't match.";
@@ -913,6 +1116,9 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     state.managerViewer = null;
     state.employeeViewer = null;
     state.loginError = null;
+    state.loginSelectedId = null;
+    state.selectedIds = {};
+    state.importResult = null;
     render();
   }
   function updateLogoutControl(){
@@ -950,6 +1156,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
           '<input type="text" id="new-member-name" placeholder="New team member name">' +
           '<label><input type="checkbox" id="new-member-manager"> Manager</label>' +
           '<select id="new-member-reports-to" multiple size="' + Math.min(3, Math.max(1, managers().length)) + '" title="Ctrl/Cmd-click to select more than one">' + mgrOpts + '</select>' +
+          '<select id="new-member-department">' + DEPARTMENTS.map(function(d){ return '<option value="' + d + '">' + d + '</option>'; }).join("") + '</select>' +
           '<input type="text" id="new-member-pin" class="pin-input" inputmode="numeric" maxlength="6" placeholder="PIN" value="' + randomPin() + '">' +
           '<button class="btn btn-primary btn-sm" data-action="add-member">+ Add</button>' +
         '</div>' +
@@ -957,16 +1164,18 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
 
       '<div class="section-head"><h2 class="section-title">All tasks</h2><button class="btn btn-primary btn-sm" data-action="open-add-task">+ Add task</button></div>' +
       viewToggle() +
-      (state.viewMode === "list" ? filterBar(true) : "") +
+      (state.viewMode === "list" ? filterBar(true, null, true) : "") +
       (state.viewMode === "calendar"
         ? calendarView(state.tasks)
-        : '<div class="task-list">' + (visible.length ? visible.map(function(t){ return taskCard(t); }).join("") : emptyState("No tasks match", "Try adjusting the filters above.")) + '</div>') +
+        : bulkControlsHtml(visible.map(function(t){ return t.id; })) + '<div class="task-list">' + (visible.length ? visible.map(function(t){ return taskCard(t, { selectable:true }); }).join("") : emptyState("No tasks match", "Try adjusting the filters above.")) + '</div>') +
+
+      '<div class="section-head"><h2 class="section-title">Bulk import</h2><span class="section-hint">Add or update many tasks at once, e.g. after the morning meeting</span></div>' +
+      importPanel() +
 
       '<div class="section-head"><h2 class="section-title">Insights</h2></div>' +
       '<div class="panel"><h3>Priority mix (auto, from end dates)</h3>' + priorityBreakdownBars(state.tasks) + '</div>' +
       '<div class="panel"><h3>Category mix</h3>' + categoryBreakdownBars(state.tasks) + '</div>' +
-      '<div class="panel"><h3>Team workload</h3>' + workloadTable() + '</div>' +
-      '<div class="section-head"><span class="section-hint">Testing the tool?</span><button class="btn btn-ghost btn-sm" data-action="reset-demo" data-confirm="0">Reset sample data</button></div>';
+      '<div class="panel"><h3>Team workload</h3>' + workloadTable() + '</div>';
   }
 
   function renderManager(){
@@ -1004,10 +1213,13 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       '<div class="section-head"><h2 class="section-title">Team tasks</h2><button class="btn btn-primary btn-sm" data-action="open-add-task">+ Add task</button></div>' +
       '<p class="section-hint" style="margin:-10px 0 12px;">You can assign to anyone on the team, not just your direct reportees.</p>' +
       viewToggle() +
-      (state.viewMode === "list" ? filterBar(true, visiblePeople) : "") +
+      (state.viewMode === "list" ? filterBar(true, visiblePeople, true) : "") +
       (state.viewMode === "calendar"
         ? calendarView(myTasks)
-        : '<div class="task-list">' + (visible.length ? visible.map(function(t){ return taskCard(t); }).join("") : emptyState("No tasks match", "Try adding a task, or adjusting the filters above.")) + '</div>') +
+        : bulkControlsHtml(visible.map(function(t){ return t.id; })) + '<div class="task-list">' + (visible.length ? visible.map(function(t){ return taskCard(t, { selectable:true }); }).join("") : emptyState("No tasks match", "Try adding a task, or adjusting the filters above.")) + '</div>') +
+
+      '<div class="section-head"><h2 class="section-title">Bulk import</h2><span class="section-hint">Add or update many tasks at once, e.g. after the morning meeting</span></div>' +
+      importPanel() +
 
       '<div class="section-head"><h2 class="section-title">Monthly performance</h2><span class="section-hint">Your team, for the month shown</span></div>' +
       '<div class="panel">' + monthlyPanel(myTasks) + '</div>' +
@@ -1062,7 +1274,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
   // ---------- modal ----------
   function openModal(mode, taskId){
     var task = taskId ? state.tasks.find(function(t){ return t.id === taskId; }) : null;
-    state.modal = { mode: mode, taskId: taskId || null, notes: task ? task.notes.slice() : [], confirmingDelete: false };
+    state.modal = { mode: mode, taskId: taskId || null, notes: task ? task.notes.slice() : [] };
     renderModal();
   }
   function closeModal(){
@@ -1130,7 +1342,7 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
           '<div class="field"><label for="f-status">Status</label><select id="f-status">' + statusOpts + '</select></div>' +
           (!isAdd ? '<div class="field"><label>Notes</label><div class="notes-list" id="notes-list">' + notesHtml + '</div><div style="display:flex;gap:8px;"><input type="text" id="f-note" placeholder="Add a note…" style="flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 10px;"><button class="btn btn-sm" data-action="add-note" type="button">Add</button></div></div>' : "") +
           '<div class="modal-footer">' +
-            '<div>' + (canDelete ? '<button class="btn btn-danger btn-sm" data-action="delete-task" data-confirm="' + (m.confirmingDelete ? "1" : "0") + '">' + (m.confirmingDelete ? "Click again to confirm" : "Delete task") + '</button>' : '') + '</div>' +
+            '<div>' + (canDelete ? '<button class="btn btn-danger btn-sm" data-action="delete-task">Delete task</button>' : '') + '</div>' +
             '<div class="modal-footer-right"><button class="btn btn-ghost btn-sm" data-action="close-modal">Cancel</button>' + (canSave ? '<button class="btn btn-primary btn-sm" data-action="save-task">Save</button>' : '') + '</div>' +
           '</div>' +
         '</div>' +
@@ -1235,6 +1447,14 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     var action = el.getAttribute("data-action");
 
     if(action === "do-login"){ handleLoginSubmit(); return; }
+    if(action === "select-login-name"){
+      state.loginSelectedId = el.getAttribute("data-id");
+      state.loginError = null;
+      renderView();
+      var pinEl = document.getElementById("login-pin");
+      if(pinEl) pinEl.focus();
+      return;
+    }
     if(action === "logout"){ handleLogout(); return; }
     if(action === "open-task"){ openModal("edit", el.getAttribute("data-id")); return; }
     if(action === "open-add-task"){ openModal("add", null); return; }
@@ -1245,6 +1465,47 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     }
     if(action === "save-task"){ saveTaskFromModal(); return; }
     if(action === "refresh"){ manualRefresh(); return; }
+    if(action === "run-import"){
+      var importTa = document.getElementById("import-text");
+      var text = importTa ? importTa.value : "";
+      if(!text || !text.trim()){ showToast("Paste some rows or choose a file first."); return; }
+      var result = runImport(text);
+      state.importResult = result;
+      if(result.added || result.updated){
+        render();
+        persist();
+      } else {
+        renderView();
+      }
+      return;
+    }
+    if(action === "export-tasks"){
+      exportTasksCSV(currentScopeTasks());
+      showToast("Export downloaded.");
+      return;
+    }
+    if(action === "download-template"){
+      downloadImportTemplate();
+      return;
+    }
+    if(action === "delete-selected"){
+      var selIds = Object.keys(state.selectedIds).filter(function(id){ return state.selectedIds[id]; });
+      if(!selIds.length) return;
+      if(window.confirm("Delete " + selIds.length + " selected task(s)? This can't be undone.")){
+        state.tasks = state.tasks.filter(function(t){ return selIds.indexOf(t.id) === -1; });
+        state.selectedIds = {};
+        render();
+        persist();
+        showToast(selIds.length + " task(s) deleted.");
+      }
+      return;
+    }
+    if(action === "filter-person"){
+      state.filters.assignee = el.getAttribute("data-id");
+      state.viewMode = "list";
+      renderView();
+      return;
+    }
     if(action === "set-view"){ state.viewMode = el.getAttribute("data-mode"); renderView(); return; }
     if(action === "cal-prev" || action === "cal-next"){
       var delta = action === "cal-prev" ? -1 : 1;
@@ -1281,15 +1542,12 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       return;
     }
     if(action === "delete-task"){
-      if(el.getAttribute("data-confirm") === "1"){
+      if(window.confirm("Delete this task? This can't be undone.")){
         state.tasks = state.tasks.filter(function(t){ return t.id !== state.modal.taskId; });
         closeModal();
         render();
         persist();
         showToast("Task deleted.");
-      } else {
-        state.modal.confirmingDelete = true;
-        renderModal();
       }
       return;
     }
@@ -1311,7 +1569,9 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       var reportsTo = reportsToSel ? Array.prototype.map.call(reportsToSel.selectedOptions, function(o){ return o.value; }) : [];
       var pinInput = document.getElementById("new-member-pin");
       var newPin = (pinInput.value || "").replace(/[^0-9]/g, "").slice(0, 6) || randomPin();
-      state.team.push({ id: uid("tm"), name: name, isManager: isMgr, managerIds: isMgr ? [] : reportsTo, pin: newPin });
+      var deptSel = document.getElementById("new-member-department");
+      var dept = deptSel ? deptSel.value : "Other";
+      state.team.push({ id: uid("tm"), name: name, isManager: isMgr, managerIds: isMgr ? [] : reportsTo, pin: newPin, department: dept });
       render();
       persist();
       return;
@@ -1325,20 +1585,6 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       persist();
       return;
     }
-    if(action === "reset-demo"){
-      if(el.getAttribute("data-confirm") === "1"){
-        state.team = normalizeTeam(seedTeam());
-        state.tasks = normalizeTasks(seedTasks());
-        render();
-        persist();
-        showToast("Sample data restored for everyone.");
-      } else {
-        el.setAttribute("data-confirm", "1");
-        el.textContent = "This resets data for everyone — click again to confirm";
-        setTimeout(function(){ if(el.isConnected){ el.setAttribute("data-confirm","0"); el.textContent = "Reset sample data"; } }, 3500);
-      }
-      return;
-    }
   }
 
   function handleChange(e){
@@ -1346,6 +1592,28 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
     if(t.matches("[data-filter]")){
       state.filters[t.getAttribute("data-filter")] = t.value;
       renderView();
+      return;
+    }
+    if(t.matches("[data-action='toggle-select']")){
+      var selId = t.getAttribute("data-id");
+      if(t.checked) state.selectedIds[selId] = true; else delete state.selectedIds[selId];
+      renderView();
+      return;
+    }
+    if(t.id === "select-all-tasks"){
+      var ids = state.lastVisibleIds || [];
+      if(t.checked){ ids.forEach(function(id){ state.selectedIds[id] = true; }); }
+      else { ids.forEach(function(id){ delete state.selectedIds[id]; }); }
+      renderView();
+      return;
+    }
+    if(t.id === "import-file" && t.files && t.files[0]){
+      var reader = new FileReader();
+      reader.onload = function(){
+        var ta = document.getElementById("import-text");
+        if(ta) ta.value = reader.result;
+      };
+      reader.readAsText(t.files[0]);
       return;
     }
     if(t.matches("[data-action='quick-status']")){
@@ -1401,6 +1669,12 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       var mem4 = getMember(mid4);
       var cleanPin = t.value.replace(/[^0-9]/g, "").slice(0, 6);
       if(mem4){ mem4.pin = cleanPin || "0000"; render(); persist(); }
+      return;
+    }
+    if(t.matches("[data-action='set-department']")){
+      var mid5 = t.getAttribute("data-id");
+      var mem5 = getMember(mid5);
+      if(mem5){ mem5.department = t.value; render(); persist(); }
       return;
     }
     if(t.id === "f-end" || t.id === "f-status"){ updatePriorityPreview(); return; }

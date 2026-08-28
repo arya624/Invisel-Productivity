@@ -162,6 +162,17 @@ table.workload tr:last-child td{ border-bottom:none; }
 .login-wrap{ display:flex; justify-content:center; padding-top:8vh; }
 .login-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:28px; width:100%; max-width:340px; box-shadow:0 12px 30px rgba(0,0,0,0.06); }
 .login-error{ color:var(--high); font-size:12.5px; margin:8px 0 0; }
+.login-name-grid{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+.login-name-btn{ border:1px solid var(--border); background:var(--surface-alt); padding:9px 14px; border-radius:9px; font-weight:600; font-size:13.5px; cursor:pointer; transition:border-color .15s ease, background .15s ease, color .15s ease; }
+.login-name-btn:hover{ border-color:var(--accent); }
+.login-name-btn.selected{ background:var(--ink); color:#fff; border-color:var(--ink); }
+.field input:disabled + .login-error{ display:none; }
+.task-select{ flex-shrink:0; }
+.import-result{ margin-top:12px; padding:10px 12px; background:var(--surface-alt); border-radius:8px; font-size:12.5px; }
+.import-errors{ margin:8px 0 0; padding-left:18px; color:var(--high); }
+.import-errors li{ margin-bottom:3px; }
+.link-btn{ background:none; border:none; padding:0; color:var(--accent); font-weight:600; cursor:pointer; text-decoration:underline; font-size:inherit; font-family:inherit; }
+.link-btn:hover{ color:var(--accent-dark); }
 .pin-input{ width:64px; border:1px solid var(--border); border-radius:7px; padding:5px 8px; font-size:12.5px; font-family:var(--font-mono); background:var(--surface-alt); letter-spacing:0.05em; }
 
 .view-toggle{ margin-bottom:14px; }
@@ -220,15 +231,6 @@ table.workload tr:last-child td{ border-bottom:none; }
   .calendar-month-label{ min-width:0; }
 }
 
-</style>
-<style>
-  .landing{ max-width:640px; margin:12vh auto 0; padding:0 20px; text-align:center; }
-  .landing .brand-mark{ margin:0 auto 18px; }
-  .landing h1{ font-family:var(--font-display); font-size:24px; margin:0 0 8px; }
-  .landing p{ color:var(--ink-soft); font-size:14px; margin:0 0 32px; }
-  .landing-links{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
-  .landing-links a{ text-decoration:none; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 26px; font-weight:600; font-size:14px; transition:border-color .15s ease, transform .15s ease; }
-  .landing-links a:hover{ border-color:var(--accent); transform:translateY(-1px); }
 </style>
 </head>
 <body>
