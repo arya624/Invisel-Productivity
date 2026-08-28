@@ -1324,10 +1324,13 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
       var sel = task && task.assigneeId === mem.id ? " selected" : "";
       return '<option value="' + mem.id + '"' + sel + '>' + escapeHtml(mem.name) + '</option>';
     }).join("");
+    var assigneeOptsMulti = assigneePool.map(function(mem, idx){
+      return '<option value="' + mem.id + '"' + (idx === 0 ? " selected" : "") + '>' + escapeHtml(mem.name) + '</option>';
+    }).join("");
     var assigneeFieldHtml = isEmployeeAdd
       ? ""
       : (isAdd
-        ? '<div class="field"><label for="f-assignees">Assign to</label><select id="f-assignees" multiple size="' + Math.max(2, Math.min(6, assigneePool.length)) + '">' + assigneeOpts + '</select><p class="section-hint" style="margin-top:4px;">Ctrl/Cmd-click to select more than one — a separate copy of this task is created for each person, so everyone tracks their own status.</p></div>'
+        ? '<div class="field"><label for="f-assignees">Assign to</label><select id="f-assignees" multiple size="' + Math.max(2, Math.min(6, assigneePool.length)) + '">' + assigneeOptsMulti + '</select><p class="section-hint" style="margin-top:4px;">First person is pre-selected. Ctrl/Cmd-click to choose different people, or select more than one — a separate copy of this task is created for each person, so everyone tracks their own status.</p></div>'
         : '<div class="field"><label for="f-assignee">Assignee</label><select id="f-assignee"' + disabledAttr + '>' + assigneeOpts + '</select></div>');
     var categoryOpts = CATEGORIES.map(function(c){
       var sel = (task ? task.category === c : c === CATEGORIES[0]) ? " selected" : "";
@@ -1423,7 +1426,15 @@ var API_URL = "https://script.google.com/macros/s/AKfycbyDDylU0SIOdderxlX8KqlODV
 
       var assigneeSel = document.getElementById("f-assignees");
       var assigneeIds = assigneeSel ? Array.prototype.map.call(assigneeSel.selectedOptions, function(o){ return o.value; }) : [];
-      if(!assigneeIds.length){ showToast("Pick at least one person to assign this to."); return; }
+      if(!assigneeIds.length){
+        showToast("Pick at least one person to assign this to.");
+        var selEl = document.getElementById("f-assignees");
+        if(selEl){
+          selEl.style.borderColor = "var(--high)";
+          selEl.style.boxShadow = "0 0 0 2px var(--high-soft)";
+        }
+        return;
+      }
       var assignedBy = ROLE === "manager" ? { type:"manager", id: state.managerViewer } : { type:"admin", id:null };
       assigneeIds.forEach(function(assigneeId){
         state.tasks.push({
